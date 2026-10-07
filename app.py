@@ -4,7 +4,6 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# BANCO DE DADOS
 produtos_db = [
     {"id": 1, "nome": "Minoxidil 60ml", "categoria": "Minoxidil", "preco": 85.00},
     {"id": 2, "nome": "Pomada Modeladora", "categoria": "Pomada", "preco": 30.00},
@@ -32,28 +31,27 @@ HTML_BASE = """
 <style>
     *{font-family:'Inter',sans-serif}
     body { margin:0; background: linear-gradient(135deg, #0d2d6b 0%, #06163a 100%); min-height:100vh; }
-    .header { background: rgba(255,255,255,0.97); backdrop-filter:blur(10px); border-bottom: 4px solid #c8102e; padding: 14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
+    .header { background: rgba(255,255,255,0.97); border-bottom: 4px solid #c8102e; padding: 14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
     .header h1 { margin:0; color:#000; font-size:23px; font-weight:900; display:flex; align-items:center; gap:8px; }
     .header h1 span { color:#c8102e; }
     .crown { font-size:30px; }
     .nav a { text-decoration:none; color:#000; background:#f1f5f9; padding:8px 16px; border-radius:100px; font-size:13px; font-weight:800; margin-left:6px; border:1.5px solid #e2e8f0; }
-    .nav a.active { background:#0d2d6b; color:white; border-color:#0d2d6b; }
-    .nav a.cta { background:#c8102e; color:white; border-color:#c8102e; }
+    .nav a.active { background:#0d2d6b; color:white; }
+    .nav a.cta { background:#c8102e; color:white; }
     .container { max-width: 950px; margin: 28px auto; padding: 16px; }
-    .card { background: #ffffff; border-radius: 20px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); position:relative; overflow:hidden; margin-bottom:16px; }
+    .card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); position:relative; overflow:hidden; margin-bottom:16px; }
     .card::before{content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg, #0d2d6b, #c8102e);}
     .card h2 { color:#000 !important; margin-top:0; font-weight:900; font-size:20px; }
     .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
-    .stat { background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); border:1px solid white; }
+    .stat { background:#fff; padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); }
     .stat b{ display:block; font-size:11px; text-transform:uppercase; color:#64748b; margin-bottom:6px; }
     .stat h3{ margin:0; font-size:26px; font-weight:900; }
     label { color: #000; font-weight: 800; font-size:12px; display:block; margin-top:14px; text-transform:uppercase; }
     input, select { width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:12px; margin-top:6px; box-sizing:border-box; color:#000; font-weight:700; background:#f8fafc; }
-    .btn { background: linear-gradient(135deg, #c8102e 0%, #8f0c22 100%); color: white; border: none; padding: 14px; width:100%; border-radius:12px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; font-size:14px; box-shadow:0 6px 15px rgba(200,16,46,0.4); }
-    .btn-blue{ background: linear-gradient(135deg, #0d2d6b 0%, #1e4bb8 100%); box-shadow:0 6px 15px rgba(13,45,107,0.4); }
+    .btn { background: linear-gradient(135deg, #c8102e 0%, #8f0c22 100%); color: white; border: none; padding: 14px; width:100%; border-radius:12px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; font-size:14px; }
+    .btn-blue{ background: linear-gradient(135deg, #0d2d6b 0%, #1e4bb8 100%); }
     .prod-item { border:2px solid #f1f5f9; padding:12px 14px; border-radius:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:#f8fafc; color:#000; }
     .prod-item.selected { background:#0d2d6b; color:white; border-color:#0d2d6b; }
-    .prod-item.selected b, .prod-item.selected small{ color:white !important; }
     .tag { background:#c8102e; color:white; font-size:10px; padding:3px 8px; border-radius:100px; font-weight:800; }
     .mini-btn{ padding:7px 12px; border-radius:8px; border:none; font-weight:800; font-size:12px; cursor:pointer; margin-left:6px; text-decoration:none; display:inline-block; }
     .badge-pago{ background:#dcfce7; color:#166534; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
@@ -94,37 +92,37 @@ def index():
       <div class="stat"><b>Mensalistas ({pend} pend.)</b><h3>R$ {total_mensal:.2f}</h3></div>
     </div>
     <div class="card">
-      <h2>👑 Rei da Navalha PRO 2.0</h2>
-      <p style="color:#000; font-weight:700;">Com edição e exclusão liberada!</p>
+      <h2>👑 Rei da Navalha PRO</h2>
+      <p style="color:#000; font-weight:700;">Com edicao e exclusao!</p>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px;">
         <a href="/novo"><button class="btn btn-blue">+ Novo Atendimento</button></a>
-        <a href="/mensalistas"><button class="btn">💳 Ver Mensalistas</button></a>
+        <a href="/mensalistas"><button class="btn">Mensalistas</button></a>
       </div>
     </div>
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="inicio")
 
-# MENSALISTAS COM EDITAR E EXCLUIR
 @app.route("/mensalistas", methods=["GET","POST"])
 def mensalistas():
+    global mensalistas_db
     if request.method=="POST":
         acao = request.form.get("acao")
+        mid = request.form.get("id")
         if acao=="novo":
             mensalistas_db.append({"id": next_id(mensalistas_db),"nome": request.form.get("nome"),"valor": float(request.form.get("valor") or 80),"vencimento": int(request.form.get("vencimento") or 10),"status": "Pendente","cortes": 0,"ultimo_pag": "-","historico": []})
-        elif acao=="pagar":
-            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
+        elif acao=="pagar" and mid:
+            m=next((x for x in mensalistas_db if str(x["id"])==str(mid)),None)
             if m: m["status"]="Pago"; m["ultimo_pag"]=datetime.now().strftime("%d/%m/%Y")
-        elif acao=="cortar":
-            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
+        elif acao=="cortar" and mid:
+            m=next((x for x in mensalistas_db if str(x["id"])==str(mid)),None)
             if m: m["cortes"]+=1; m["historico"].append(datetime.now().strftime("%d/%m - Corte"))
-        elif acao=="pendente":
-            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
+        elif acao=="pendente" and mid:
+            m=next((x for x in mensalistas_db if str(x["id"])==str(mid)),None)
             if m: m["status"]="Pendente"
-        elif acao=="excluir":
-            global mensalistas_db
-            mensalistas_db = [x for x in mensalistas_db if x["id"]!=int(request.form.get("id"))]
-        elif acao=="editar":
-            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
+        elif acao=="excluir" and mid:
+            mensalistas_db = [x for x in mensalistas_db if str(x["id"])!=str(mid)]
+        elif acao=="editar" and mid:
+            m=next((x for x in mensalistas_db if str(x["id"])==str(mid)),None)
             if m:
                 m["nome"]=request.form.get("nome")
                 m["valor"]=float(request.form.get("valor"))
@@ -134,10 +132,9 @@ def mensalistas():
     edit_id = request.args.get("edit", type=int)
     lista=""
     for m in reversed(mensalistas_db):
-        badge = f"<span class='badge-pago'>● PAGO</span>" if m["status"]=="Pago" else f"<span class='badge-pend'>● PENDENTE</span>"
-        hist = "<br>".join(m["historico"][-3:]) if m["historico"] else "<small style='color:#94a3b8;'>Nenhum corte ainda</small>"
-        
-        # Se estiver editando esse
+        badge = "<span class='badge-pago'>PAGO</span>" if m["status"]=="Pago" else "<span class='badge-pend'>PENDENTE</span>"
+        hist = "<br>".join(m["historico"][-3:]) if m["historico"] else "<small style='color:#94a3b8;'>Nenhum corte</small>"
+        form_edit = ""
         if edit_id==m["id"]:
             form_edit = f"""
             <form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:12px;">
@@ -147,106 +144,85 @@ def mensalistas():
                 <input name="valor" type="number" value="{m['valor']}">
                 <input name="vencimento" type="number" value="{m['vencimento']}">
               </div>
-              <button class="mini-btn" style="background:#0d2d6b; color:white; margin-top:8px;">💾 Salvar</button>
+              <button class="mini-btn" style="background:#0d2d6b; color:white; margin-top:8px;">Salvar</button>
               <a href="/mensalistas" class="mini-btn" style="background:#e2e8f0; color:#000;">Cancelar</a>
             </form>
             """
-        else:
-            form_edit=""
-
         lista+=f"""
         <div class="card" style="border-left:5px solid #0d2d6b;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><b style="font-size:16px; color:#000;">{m['nome']}</b><br><small style="color:#64748b;">Venc: dia {m['vencimento']} • R$ {m['valor']:.2f}/mês • {m['cortes']} cortes</small></div>
-            <div>{badge}</div>
-          </div>
-          <div style="margin-top:10px; background:#f8fafc; padding:10px 12px; border-radius:10px; font-size:12px; color:#000;"><b>Últimos:</b><br>{hist}</div>
+          <div style="display:flex; justify-content:space-between;"><div><b style="color:#000;">{m['nome']}</b><br><small>Venc dia {m['vencimento']} - R$ {m['valor']:.2f} - {m['cortes']} cortes</small></div><div>{badge}</div></div>
+          <div style="margin-top:10px; background:#f8fafc; padding:8px; border-radius:8px; font-size:12px;">{hist}</div>
           {form_edit}
-          <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:4px;">
-            <form method="POST"><input type="hidden" name="acao" value="cortar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#0d2d6b; color:white;">✂️ Corte</button></form>
-            <form method="POST"><input type="hidden" name="acao" value="pagar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#16a34a; color:white;">💰 Pago</button></form>
-            <form method="POST"><input type="hidden" name="acao" value="pendente"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b;">Pendente</button></form>
-            <a href="/mensalistas?edit={m['id']}" class="mini-btn" style="background:#fef3c7; color:#92400e;">✏️ Editar</a>
-            <form method="POST" onsubmit="return confirm('Excluir {m['nome']}?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca;">🗑️ Excluir</button></form>
+          <div style="margin-top:12px;">
+            <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="cortar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#0d2d6b; color:white;">Corte</button></form>
+            <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="pagar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#16a34a; color:white;">Pago</button></form>
+            <a href="/mensalistas?edit={m['id']}" class="mini-btn" style="background:#fef3c7; color:#92400e;">Editar</a>
+            <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b;">Excluir</button></form>
           </div>
-          <small style="color:#94a3b8;">Último pag: {m['ultimo_pag']}</small>
         </div>
         """
-
     content=f"""
     <div class="card">
-      <h2>💳 Novo Mensalista</h2>
+      <h2>Novo Mensalista</h2>
       <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
-        <div><label>Nome</label><input name="nome" required placeholder="Ex: Marcos"></div>
+        <div><label>Nome</label><input name="nome" required></div>
         <div><label>Valor</label><input name="valor" type="number" value="80"></div>
-        <div><label>Venc.</label><input name="vencimento" type="number" value="10" min="1" max="31"></div>
-        <div><button class="btn btn-blue" style="margin-top:6px;">Adicionar</button></div>
+        <div><label>Venc.</label><input name="vencimento" type="number" value="10"></div>
+        <div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div>
       </form>
     </div>
-    <h2 style="color:white; font-weight:900; margin-top:20px;">Mensalistas ({len(mensalistas_db)})</h2>
-    {lista if lista else "<div class='card'>Nenhum mensalista</div>"}
+    {lista}
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="mensal")
 
-# PRODUTOS COM EDITAR E EXCLUIR
 @app.route("/produtos", methods=["GET","POST"])
 def produtos():
+    global produtos_db
     if request.method=="POST":
         acao=request.form.get("acao")
+        mid=request.form.get("id")
         if acao=="novo":
             produtos_db.append({"id": next_id(produtos_db),"nome": request.form.get("nome"),"categoria": request.form.get("categoria"),"preco": float(request.form.get("preco") or 0)})
-        elif acao=="excluir":
-            global produtos_db
-            produtos_db = [x for x in produtos_db if x["id"]!=int(request.form.get("id"))]
-        elif acao=="editar":
-            p=next((x for x in produtos_db if x["id"]==int(request.form.get("id"))),None)
+        elif acao=="excluir" and mid:
+            produtos_db = [x for x in produtos_db if str(x["id"])!=str(mid)]
+        elif acao=="editar" and mid:
+            p=next((x for x in produtos_db if str(x["id"])==str(mid)),None)
             if p:
                 p["nome"]=request.form.get("nome")
                 p["categoria"]=request.form.get("categoria")
                 p["preco"]=float(request.form.get("preco"))
         return redirect("/produtos")
-
     edit_id = request.args.get("edit", type=int)
     rows=""
     for p in produtos_db:
         if edit_id==p["id"]:
-            rows+=f"""
-            <tr style="background:#f1f5f9;"><td colspan="3" style="padding:12px;">
+            rows+=f"""<tr style="background:#f1f5f9;"><td colspan="3" style="padding:12px;">
               <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:8px;">
                 <input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{p['id']}">
-                <input name="nome" value="{p['nome']}" required>
-                <input name="categoria" value="{p['categoria']}">
-                <input name="preco" type="number" step="0.01" value="{p['preco']}">
-                <div><button class="mini-btn" style="background:#0d2d6b; color:white;">Salvar</button><a href="/produtos" class="mini-btn" style="background:#e2e8f0; color:#000;">Cancelar</a></div>
-              </form>
-            </td></tr>
-            """
+                <input name="nome" value="{p['nome']}" required><input name="categoria" value="{p['categoria']}"><input name="preco" type="number" step="0.01" value="{p['preco']}">
+                <div><button class="mini-btn" style="background:#0d2d6b; color:white;">Salvar</button><a href="/produtos" class="mini-btn" style="background:#e2e8f0;">Cancelar</a></div>
+              </form></td></tr>"""
         else:
-            rows+=f"""
-            <tr style='color:#000;'><td style='padding:12px; border-bottom:1px solid #e2e8f0;'><span class='tag'>{p['categoria']}</span> <b style='margin-left:6px;'>{p['nome']}</b></td>
+            rows+=f"""<tr style='color:#000;'><td style='padding:12px; border-bottom:1px solid #e2e8f0;'><span class='tag'>{p['categoria']}</span> <b style='margin-left:6px;'>{p['nome']}</b></td>
             <td style='padding:12px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {p['preco']:.2f}</td>
-            <td style='padding:12px; border-bottom:1px solid #e2e8f0; text-align:right;'>
-              <a href="/produtos?edit={p['id']}" class="mini-btn" style="background:#fef3c7; color:#92400e;">✏️</a>
-              <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir {p['nome']}?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{p['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b;">🗑️</button></form>
-            </td></tr>
-            """
-
+            <td style='padding:12px; border-bottom:1px solid #e2e8f0; text-align:right;'><a href="/produtos?edit={p['id']}" class="mini-btn" style="background:#fef3c7;">Editar</a>
+            <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{p['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form></td></tr>"""
     content = f"""
     <div class="card">
-      <h2>➕ Novo Produto</h2>
+      <h2>Novo Produto</h2>
       <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
-        <div><label>Nome</label><input name="nome" required placeholder="Ex: Óleo para Barba"></div>
-        <div><label>Categoria</label><input name="categoria" placeholder="Ex: Óleo" value="Novo"></div>
-        <div><label>Preço</label><input name="preco" type="number" step="0.01" required></div>
-        <div><button class="btn btn-blue" style="margin-top:6px; padding:12px;">Adicionar</button></div>
+        <div><label>Nome</label><input name="nome" required></div>
+        <div><label>Categoria</label><input name="categoria" value="Novo"></div>
+        <div><label>Preco</label><input name="preco" type="number" step="0.01" required></div>
+        <div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div>
       </form>
     </div>
     <div class="card">
-      <h2>👑 Produtos - Rei da Navalha ({len(produtos_db)})</h2>
+      <h2>Produtos ({len(produtos_db)})</h2>
       <table style="width:100%; border-collapse:collapse; margin-top:12px;">
-        <tr style="background:#0d2d6b; color:white;"><th style="padding:12px; text-align:left; border-radius:10px 0 0 0;">Produto</th><th style="padding:12px; text-align:left;">Preço</th><th style="padding:12px; text-align:right; border-radius:0 10px 0 0;">Ações</th></tr>
+        <tr style="background:#0d2d6b; color:white;"><th style="padding:12px; text-align:left;">Produto</th><th>Preco</th><th>Acoes</th></tr>
         {rows}
       </table>
     </div>
@@ -272,21 +248,21 @@ def novo():
         return redirect("/historico")
     produtos_html = ""
     for p in produtos_db:
-        produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small style="margin-left:6px;">R$ {p["preco"]:.2f}</small></div><div>✓</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
+        produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small>R$ {p["preco"]:.2f}</small></div><div>OK</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
     servicos_opt = "".join([f'<option>{s}</option>' for s in servicos])
     content = f"""
     <div class="card">
-      <h2>Novo Atendimento Avulso</h2>
+      <h2>Novo Atendimento</h2>
       <form method="POST">
-        <label>Cliente *</label><input name="cliente" required placeholder="Nome do cliente">
-        <label>Pagamento</label><select name="pagamento"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
+        <label>Cliente *</label><input name="cliente" required>
+        <label>Pagamento</label><select name="pagamento"><option>Dinheiro</option><option>Pix</option><option>Cartao</option></select>
         <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px;">
-          <div><label>Serviço *</label><select name="servico">{servicos_opt}</select></div>
-          <div><label>Valor Serviço</label><input id="valor_servico" name="valor_servico" type="number" value="35" oninput="calcTotal()"></div>
-          <div><label>Total (Auto)</label><input id="total_auto" name="total_auto" readonly style="font-weight:900; background:#fef3c7; border-color:#000;" value="35.00"><small id="total_view" style="color:#c8102e; font-weight:900;">R$ 35.00</small></div>
+          <div><label>Servico</label><select name="servico">{servicos_opt}</select></div>
+          <div><label>Valor</label><input id="valor_servico" name="valor_servico" type="number" value="35" oninput="calcTotal()"></div>
+          <div><label>Total</label><input id="total_auto" name="total_auto" readonly style="font-weight:900; background:#fef3c7;" value="35.00"><small id="total_view" style="color:#c8102e; font-weight:900;">R$ 35.00</small></div>
         </div>
-        <label style="margin-top:20px;">Produtos - clique para somar</label><input type="hidden" name="produtos" id="produtos_input"><div style="max-height:320px; overflow:auto; margin-top:8px;">{produtos_html}</div>
-        <button class="btn" type="submit">SALVAR ATENDIMENTO</button>
+        <label>Produtos - clique</label><input type="hidden" name="produtos" id="produtos_input"><div style="max-height:320px; overflow:auto; margin-top:8px;">{produtos_html}</div>
+        <button class="btn" type="submit">SALVAR</button>
       </form>
     </div>
     """
@@ -296,9 +272,9 @@ def novo():
 def historico():
     rows = ""
     for a in reversed(atendimentos_db):
-        rows += f"<tr style='color:#000;'><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{a['data']}</td><td style='padding:10px; border-bottom:1px solid #e2e8f0; font-weight:800;'>{a['cliente']}</td><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{a['servico']}<br><small style='color:#c8102e; font-weight:700;'>{a['produtos']}</small></td><td style='padding:10px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {a['total']:.2f}</td></tr>"
-    if not rows: rows = "<tr><td colspan=4 style='padding:24px; text-align:center; color:#000; font-weight:700;'>Nenhum atendimento ainda</td></tr>"
-    content = f"""<div class="card"><h2>Histórico Avulso</h2><table style="width:100%; border-collapse:collapse; margin-top:12px;"><tr style="background:#0d2d6b; color:white;"><th style="padding:10px; text-align:left;">Data</th><th style="padding:10px; text-align:left;">Cliente</th><th style="padding:10px; text-align:left;">Serviço + Produtos</th><th style="padding:10px; text-align:left;">Total</th></tr>{rows}</table></div>"""
+        rows += f"<tr style='color:#000;'><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{a['data']}</td><td style='padding:10px; border-bottom:1px solid #e2e8f0; font-weight:800;'>{a['cliente']}</td><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{a['servico']}<br><small style='color:#c8102e;'>{a['produtos']}</small></td><td style='padding:10px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {a['total']:.2f}</td></tr>"
+    if not rows: rows = "<tr><td colspan=4 style='padding:24px; text-align:center;'>Nenhum ainda</td></tr>"
+    content = f"""<div class="card"><h2>Historico</h2><table style="width:100%; border-collapse:collapse; margin-top:12px;"><tr style="background:#0d2d6b; color:white;"><th style="padding:10px;">Data</th><th>Cliente</th><th>Servico</th><th>Total</th></tr>{rows}</table></div>"""
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="hist")
 
 if __name__ == "__main__":
