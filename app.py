@@ -15,11 +15,12 @@ produtos_db = [
 ]
 atendimentos_db = []
 servicos = ["Corte Simples - R$ 35", "Barba - R$ 30", "Corte + Barba - R$ 60", "Pezinho - R$ 15", "Sobrancelha - R$ 10"]
-
-# NOVO: MENSALISTAS
 mensalistas_db = [
     {"id": 1, "nome": "João Silva", "valor": 80.0, "vencimento": 10, "status": "Pendente", "cortes": 2, "ultimo_pag": "01/10/2026", "historico": ["02/10 - Corte", "15/10 - Corte"]},
 ]
+
+def next_id(lista):
+    return max([x["id"] for x in lista], default=0) + 1
 
 HTML_BASE = """
 <!DOCTYPE html>
@@ -30,39 +31,33 @@ HTML_BASE = """
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
     *{font-family:'Inter',sans-serif}
-    body { margin:0; background: #0a1f4d; background: linear-gradient(135deg, #0d2d6b 0%, #06163a 100%); min-height:100vh; }
+    body { margin:0; background: linear-gradient(135deg, #0d2d6b 0%, #06163a 100%); min-height:100vh; }
     .header { background: rgba(255,255,255,0.97); backdrop-filter:blur(10px); border-bottom: 4px solid #c8102e; padding: 14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; box-shadow:0 4px 20px rgba(0,0,0,0.3); }
-    .header h1 { margin:0; color:#000; font-size:23px; font-weight:900; display:flex; align-items:center; gap:8px; letter-spacing:-0.5px; }
+    .header h1 { margin:0; color:#000; font-size:23px; font-weight:900; display:flex; align-items:center; gap:8px; }
     .header h1 span { color:#c8102e; }
-    .crown { font-size:30px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2)); }
-    .nav a { text-decoration:none; color:#000; background:#f1f5f9; padding:8px 16px; border-radius:100px; font-size:13px; font-weight:800; margin-left:6px; border:1.5px solid #e2e8f0; transition:0.2s; }
-    .nav a:hover { transform:translateY(-2px); }
-    .nav a.active { background:#0d2d6b; color:white; border-color:#0d2d6b; box-shadow:0 4px 10px rgba(13,45,107,0.4); }
+    .crown { font-size:30px; }
+    .nav a { text-decoration:none; color:#000; background:#f1f5f9; padding:8px 16px; border-radius:100px; font-size:13px; font-weight:800; margin-left:6px; border:1.5px solid #e2e8f0; }
+    .nav a.active { background:#0d2d6b; color:white; border-color:#0d2d6b; }
     .nav a.cta { background:#c8102e; color:white; border-color:#c8102e; }
     .container { max-width: 950px; margin: 28px auto; padding: 16px; }
-    .card { background: #ffffff; border-radius: 20px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.2); position:relative; overflow:hidden; }
+    .card { background: #ffffff; border-radius: 20px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); position:relative; overflow:hidden; margin-bottom:16px; }
     .card::before{content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg, #0d2d6b, #c8102e);}
     .card h2 { color:#000 !important; margin-top:0; font-weight:900; font-size:20px; }
     .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
-    .stat { background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); border:1px solid white; position:relative; }
-    .stat b{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-bottom:6px; }
+    .stat { background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); border:1px solid white; }
+    .stat b{ display:block; font-size:11px; text-transform:uppercase; color:#64748b; margin-bottom:6px; }
     .stat h3{ margin:0; font-size:26px; font-weight:900; }
-    label { color: #000; font-weight: 800; font-size:12px; display:block; margin-top:14px; text-transform:uppercase; letter-spacing:0.5px; }
-    input, select { width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:12px; margin-top:6px; box-sizing:border-box; color:#000; font-weight:700; background:#f8fafc; transition:0.2s; }
-    input:focus, select:focus{ border-color:#0d2d6b; background:white; outline:none; box-shadow:0 0 0 3px rgba(13,45,107,0.15); }
-    .btn { background: linear-gradient(135deg, #c8102e 0%, #8f0c22 100%); color: white; border: none; padding: 14px; width:100%; border-radius:12px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; letter-spacing:1px; font-size:14px; box-shadow:0 6px 15px rgba(200,16,46,0.4); transition:0.2s; }
-    .btn:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(200,16,46,0.5); }
+    label { color: #000; font-weight: 800; font-size:12px; display:block; margin-top:14px; text-transform:uppercase; }
+    input, select { width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:12px; margin-top:6px; box-sizing:border-box; color:#000; font-weight:700; background:#f8fafc; }
+    .btn { background: linear-gradient(135deg, #c8102e 0%, #8f0c22 100%); color: white; border: none; padding: 14px; width:100%; border-radius:12px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; font-size:14px; box-shadow:0 6px 15px rgba(200,16,46,0.4); }
     .btn-blue{ background: linear-gradient(135deg, #0d2d6b 0%, #1e4bb8 100%); box-shadow:0 6px 15px rgba(13,45,107,0.4); }
-    .prod-item { border:2px solid #f1f5f9; padding:12px 14px; border-radius:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:#f8fafc; color:#000; transition:0.2s; }
-    .prod-item:hover{ border-color:#0d2d6b; transform:scale(1.01); }
-    .prod-item.selected { background:#0d2d6b; color:white; border-color:#0d2d6b; box-shadow:0 6px 15px rgba(13,45,107,0.3); }
+    .prod-item { border:2px solid #f1f5f9; padding:12px 14px; border-radius:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:#f8fafc; color:#000; }
+    .prod-item.selected { background:#0d2d6b; color:white; border-color:#0d2d6b; }
     .prod-item.selected b, .prod-item.selected small{ color:white !important; }
     .tag { background:#c8102e; color:white; font-size:10px; padding:3px 8px; border-radius:100px; font-weight:800; }
-    .prod-item.selected .tag { background:white; color:#c8102e; }
-    .mensal-card{ border-left:5px solid #0d2d6b; }
+    .mini-btn{ padding:7px 12px; border-radius:8px; border:none; font-weight:800; font-size:12px; cursor:pointer; margin-left:6px; text-decoration:none; display:inline-block; }
     .badge-pago{ background:#dcfce7; color:#166534; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
     .badge-pend{ background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
-    .mini-btn{ padding:6px 12px; border-radius:8px; border:none; font-weight:800; font-size:12px; cursor:pointer; margin-right:6px; }
 </style>
 </head>
 <body>
@@ -70,7 +65,7 @@ HTML_BASE = """
   <h1><span class="crown">👑</span> REI DA <span>NAVALHA</span></h1>
   <div class="nav">
     <a href="/" class="{{'active' if active=='inicio' else ''}}">Início</a>
-    <a href="/mensalistas" class="{{'active' if active=='mensal' else ''}}" style="{{'background:#0d2d6b;color:white;' if active=='mensal' else ''}}">💳 Mensalistas</a>
+    <a href="/mensalistas" class="{{'active' if active=='mensal' else ''}}">💳 Mensalistas</a>
     <a href="/produtos" class="{{'active' if active=='prod' else ''}}">Produtos</a>
     <a href="/historico" class="{{'active' if active=='hist' else ''}}">Histórico</a>
     <a href="/novo" class="cta">+ Novo</a>
@@ -100,8 +95,7 @@ def index():
     </div>
     <div class="card">
       <h2>👑 Rei da Navalha PRO 2.0</h2>
-      <p style="color:#000; font-weight:700; margin-bottom:6px;">Agora com controle de mensalistas + design premium.</p>
-      <p style="color:#475569; font-size:14px;">Gerencie cortes avulsos e clientes que pagam por mês, controle de dias que vieram e pagamentos.</p>
+      <p style="color:#000; font-weight:700;">Com edição e exclusão liberada!</p>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px;">
         <a href="/novo"><button class="btn btn-blue">+ Novo Atendimento</button></a>
         <a href="/mensalistas"><button class="btn">💳 Ver Mensalistas</button></a>
@@ -110,67 +104,154 @@ def index():
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="inicio")
 
+# MENSALISTAS COM EDITAR E EXCLUIR
 @app.route("/mensalistas", methods=["GET","POST"])
 def mensalistas():
     if request.method=="POST":
         acao = request.form.get("acao")
         if acao=="novo":
-            mensalistas_db.append({
-                "id": len(mensalistas_db)+1,
-                "nome": request.form.get("nome"),
-                "valor": float(request.form.get("valor") or 80),
-                "vencimento": int(request.form.get("vencimento") or 10),
-                "status": "Pendente",
-                "cortes": 0,
-                "ultimo_pag": "-",
-                "historico": []
-            })
+            mensalistas_db.append({"id": next_id(mensalistas_db),"nome": request.form.get("nome"),"valor": float(request.form.get("valor") or 80),"vencimento": int(request.form.get("vencimento") or 10),"status": "Pendente","cortes": 0,"ultimo_pag": "-","historico": []})
         elif acao=="pagar":
-            mid=int(request.form.get("id")); m=next((x for x in mensalistas_db if x["id"]==mid),None)
+            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
             if m: m["status"]="Pago"; m["ultimo_pag"]=datetime.now().strftime("%d/%m/%Y")
         elif acao=="cortar":
-            mid=int(request.form.get("id")); m=next((x for x in mensalistas_db if x["id"]==mid),None)
+            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
             if m: m["cortes"]+=1; m["historico"].append(datetime.now().strftime("%d/%m - Corte"))
         elif acao=="pendente":
-            mid=int(request.form.get("id")); m=next((x for x in mensalistas_db if x["id"]==mid),None)
+            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
             if m: m["status"]="Pendente"
+        elif acao=="excluir":
+            global mensalistas_db
+            mensalistas_db = [x for x in mensalistas_db if x["id"]!=int(request.form.get("id"))]
+        elif acao=="editar":
+            m=next((x for x in mensalistas_db if x["id"]==int(request.form.get("id"))),None)
+            if m:
+                m["nome"]=request.form.get("nome")
+                m["valor"]=float(request.form.get("valor"))
+                m["vencimento"]=int(request.form.get("vencimento"))
         return redirect("/mensalistas")
 
+    edit_id = request.args.get("edit", type=int)
     lista=""
     for m in reversed(mensalistas_db):
         badge = f"<span class='badge-pago'>● PAGO</span>" if m["status"]=="Pago" else f"<span class='badge-pend'>● PENDENTE</span>"
         hist = "<br>".join(m["historico"][-3:]) if m["historico"] else "<small style='color:#94a3b8;'>Nenhum corte ainda</small>"
+        
+        # Se estiver editando esse
+        if edit_id==m["id"]:
+            form_edit = f"""
+            <form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:12px;">
+              <input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{m['id']}">
+              <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px;">
+                <input name="nome" value="{m['nome']}" required>
+                <input name="valor" type="number" value="{m['valor']}">
+                <input name="vencimento" type="number" value="{m['vencimento']}">
+              </div>
+              <button class="mini-btn" style="background:#0d2d6b; color:white; margin-top:8px;">💾 Salvar</button>
+              <a href="/mensalistas" class="mini-btn" style="background:#e2e8f0; color:#000;">Cancelar</a>
+            </form>
+            """
+        else:
+            form_edit=""
+
         lista+=f"""
-        <div class="card mensal-card" style="margin-bottom:14px; padding:18px;">
+        <div class="card" style="border-left:5px solid #0d2d6b;">
           <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><b style="font-size:16px; color:#000;">{m['nome']}</b><br><small style="color:#64748b;">Venc: todo dia {m['vencimento']} • R$ {m['valor']:.2f}/mês • {m['cortes']} cortes no mês</small></div>
+            <div><b style="font-size:16px; color:#000;">{m['nome']}</b><br><small style="color:#64748b;">Venc: dia {m['vencimento']} • R$ {m['valor']:.2f}/mês • {m['cortes']} cortes</small></div>
             <div>{badge}</div>
           </div>
-          <div style="margin-top:12px; background:#f8fafc; padding:10px 12px; border-radius:10px; font-size:12px; color:#000;"><b>Últimos cortes:</b><br>{hist}</div>
-          <div style="margin-top:12px; display:flex;">
-            <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="cortar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#0d2d6b; color:white;">✂️ Registrar Corte</button></form>
-            <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="pagar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#16a34a; color:white;">💰 Pago</button></form>
-            <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="pendente"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b;">Pendente</button></form>
+          <div style="margin-top:10px; background:#f8fafc; padding:10px 12px; border-radius:10px; font-size:12px; color:#000;"><b>Últimos:</b><br>{hist}</div>
+          {form_edit}
+          <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:4px;">
+            <form method="POST"><input type="hidden" name="acao" value="cortar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#0d2d6b; color:white;">✂️ Corte</button></form>
+            <form method="POST"><input type="hidden" name="acao" value="pagar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#16a34a; color:white;">💰 Pago</button></form>
+            <form method="POST"><input type="hidden" name="acao" value="pendente"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b;">Pendente</button></form>
+            <a href="/mensalistas?edit={m['id']}" class="mini-btn" style="background:#fef3c7; color:#92400e;">✏️ Editar</a>
+            <form method="POST" onsubmit="return confirm('Excluir {m['nome']}?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca;">🗑️ Excluir</button></form>
           </div>
           <small style="color:#94a3b8;">Último pag: {m['ultimo_pag']}</small>
         </div>
         """
 
     content=f"""
-    <div class="card" style="margin-bottom:18px;">
+    <div class="card">
       <h2>💳 Novo Mensalista</h2>
       <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
-        <div><label>Nome do Cliente</label><input name="nome" required placeholder="Ex: Marcos"></div>
-        <div><label>Valor Mensal</label><input name="valor" type="number" value="80"></div>
-        <div><label>Vencimento (dia)</label><input name="vencimento" type="number" value="10" min="1" max="31"></div>
+        <div><label>Nome</label><input name="nome" required placeholder="Ex: Marcos"></div>
+        <div><label>Valor</label><input name="valor" type="number" value="80"></div>
+        <div><label>Venc.</label><input name="vencimento" type="number" value="10" min="1" max="31"></div>
         <div><button class="btn btn-blue" style="margin-top:6px;">Adicionar</button></div>
       </form>
     </div>
-    <h2 style="color:white; font-weight:900;">Seus Mensalistas ({len(mensalistas_db)})</h2>
-    {lista if lista else "<div class='card'>Nenhum mensalista ainda</div>"}
+    <h2 style="color:white; font-weight:900; margin-top:20px;">Mensalistas ({len(mensalistas_db)})</h2>
+    {lista if lista else "<div class='card'>Nenhum mensalista</div>"}
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="mensal")
+
+# PRODUTOS COM EDITAR E EXCLUIR
+@app.route("/produtos", methods=["GET","POST"])
+def produtos():
+    if request.method=="POST":
+        acao=request.form.get("acao")
+        if acao=="novo":
+            produtos_db.append({"id": next_id(produtos_db),"nome": request.form.get("nome"),"categoria": request.form.get("categoria"),"preco": float(request.form.get("preco") or 0)})
+        elif acao=="excluir":
+            global produtos_db
+            produtos_db = [x for x in produtos_db if x["id"]!=int(request.form.get("id"))]
+        elif acao=="editar":
+            p=next((x for x in produtos_db if x["id"]==int(request.form.get("id"))),None)
+            if p:
+                p["nome"]=request.form.get("nome")
+                p["categoria"]=request.form.get("categoria")
+                p["preco"]=float(request.form.get("preco"))
+        return redirect("/produtos")
+
+    edit_id = request.args.get("edit", type=int)
+    rows=""
+    for p in produtos_db:
+        if edit_id==p["id"]:
+            rows+=f"""
+            <tr style="background:#f1f5f9;"><td colspan="3" style="padding:12px;">
+              <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:8px;">
+                <input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{p['id']}">
+                <input name="nome" value="{p['nome']}" required>
+                <input name="categoria" value="{p['categoria']}">
+                <input name="preco" type="number" step="0.01" value="{p['preco']}">
+                <div><button class="mini-btn" style="background:#0d2d6b; color:white;">Salvar</button><a href="/produtos" class="mini-btn" style="background:#e2e8f0; color:#000;">Cancelar</a></div>
+              </form>
+            </td></tr>
+            """
+        else:
+            rows+=f"""
+            <tr style='color:#000;'><td style='padding:12px; border-bottom:1px solid #e2e8f0;'><span class='tag'>{p['categoria']}</span> <b style='margin-left:6px;'>{p['nome']}</b></td>
+            <td style='padding:12px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {p['preco']:.2f}</td>
+            <td style='padding:12px; border-bottom:1px solid #e2e8f0; text-align:right;'>
+              <a href="/produtos?edit={p['id']}" class="mini-btn" style="background:#fef3c7; color:#92400e;">✏️</a>
+              <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir {p['nome']}?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{p['id']}"><button class="mini-btn" style="background:#fee2e2; color:#991b1b;">🗑️</button></form>
+            </td></tr>
+            """
+
+    content = f"""
+    <div class="card">
+      <h2>➕ Novo Produto</h2>
+      <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+        <input type="hidden" name="acao" value="novo">
+        <div><label>Nome</label><input name="nome" required placeholder="Ex: Óleo para Barba"></div>
+        <div><label>Categoria</label><input name="categoria" placeholder="Ex: Óleo" value="Novo"></div>
+        <div><label>Preço</label><input name="preco" type="number" step="0.01" required></div>
+        <div><button class="btn btn-blue" style="margin-top:6px; padding:12px;">Adicionar</button></div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>👑 Produtos - Rei da Navalha ({len(produtos_db)})</h2>
+      <table style="width:100%; border-collapse:collapse; margin-top:12px;">
+        <tr style="background:#0d2d6b; color:white;"><th style="padding:12px; text-align:left; border-radius:10px 0 0 0;">Produto</th><th style="padding:12px; text-align:left;">Preço</th><th style="padding:12px; text-align:right; border-radius:0 10px 0 0;">Ações</th></tr>
+        {rows}
+      </table>
+    </div>
+    """
+    return render_template_string(HTML_BASE.replace("{{content}}", content), active="prod")
 
 @app.route("/novo", methods=["GET", "POST"])
 def novo():
@@ -217,16 +298,8 @@ def historico():
     for a in reversed(atendimentos_db):
         rows += f"<tr style='color:#000;'><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{a['data']}</td><td style='padding:10px; border-bottom:1px solid #e2e8f0; font-weight:800;'>{a['cliente']}</td><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{a['servico']}<br><small style='color:#c8102e; font-weight:700;'>{a['produtos']}</small></td><td style='padding:10px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {a['total']:.2f}</td></tr>"
     if not rows: rows = "<tr><td colspan=4 style='padding:24px; text-align:center; color:#000; font-weight:700;'>Nenhum atendimento ainda</td></tr>"
-    content = f"""<div class="card"><h2>Histórico Avulso</h2><table style="width:100%; border-collapse:collapse; margin-top:12px;"><tr style="background:#0d2d6b; color:white;"><th style="padding:10px; text-align:left; border-radius:10px 0 0 0;">Data</th><th style="padding:10px; text-align:left;">Cliente</th><th style="padding:10px; text-align:left;">Serviço + Produtos</th><th style="padding:10px; text-align:left; border-radius:0 10px 0 0;">Total</th></tr>{rows}</table></div>"""
+    content = f"""<div class="card"><h2>Histórico Avulso</h2><table style="width:100%; border-collapse:collapse; margin-top:12px;"><tr style="background:#0d2d6b; color:white;"><th style="padding:10px; text-align:left;">Data</th><th style="padding:10px; text-align:left;">Cliente</th><th style="padding:10px; text-align:left;">Serviço + Produtos</th><th style="padding:10px; text-align:left;">Total</th></tr>{rows}</table></div>"""
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="hist")
-
-@app.route("/produtos")
-def produtos():
-    rows = ""
-    for p in produtos_db:
-        rows += f"<tr style='color:#000;'><td style='padding:12px; border-bottom:1px solid #e2e8f0;'><span class='tag'>{p['categoria']}</span> <b style='margin-left:6px;'>{p['nome']}</b></td><td style='padding:12px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {p['preco']:.2f}</td></tr>"
-    content = f"""<div class="card"><h2>👑 Produtos - Rei da Navalha</h2><table style="width:100%; border-collapse:collapse; margin-top:12px;"><tr style="background:#0d2d6b; color:white;"><th style="padding:12px; text-align:left; border-radius:10px 0 0 0;">Produto</th><th style="padding:12px; text-align:left; border-radius:0 10px 0 0;">Preço</th></tr>{rows}</table></div>"""
-    return render_template_string(HTML_BASE.replace("{{content}}", content), active="prod")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
