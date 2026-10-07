@@ -1,238 +1,226 @@
+from flask import Flask, render_template_string, request, redirect
 import os
 from datetime import datetime
-from flask import Flask, render_template_string, request, redirect, send_file
-import sqlite3
-from io import BytesIO
 
 app = Flask(__name__)
-DATABASE_URL = os.environ.get('DATABASE_URL')
-USE_POSTGRES = False
-if DATABASE_URL:
-    try:
-        import psycopg2
-        USE_POSTGRES = True
-    except:
-        USE_POSTGRES = False
 
-def get_conn():
-    if USE_POSTGRES:
-        return psycopg2.connect(DATABASE_URL, sslmode='require')
-    else:
-        conn = sqlite3.connect('barbearia.db')
-        conn.row_factory = sqlite3.Row
-        return conn
+# PRODUTOS - REI DA NAVALHA
+produtos_db = [
+    {"id": 1, "nome": "Minoxidil 60ml", "categoria": "Minoxidil", "preco": 85.00},
+    {"id": 2, "nome": "Pomada Modeladora", "categoria": "Pomada", "preco": 30.00},
+    {"id": 3, "nome": "Gel Cola", "categoria": "Gel", "preco": 25.00},
+    {"id": 4, "nome": "Creme de Barbear", "categoria": "Creme", "preco": 35.00},
+    {"id": 5, "nome": "Shampoo 2 em 1", "categoria": "Shampoo", "preco": 28.00},
+    {"id": 6, "nome": "Balm Pós-Barba", "categoria": "Balm", "preco": 32.00},
+]
+atendimentos_db = []
+servicos = ["Corte Simples - R$ 35", "Barba - R$ 30", "Corte + Barba - R$ 60", "Pezinho - R$ 15", "Sobrancelha - R$ 10"]
 
-def init_db():
-    conn = get_conn(); cur = conn.cursor()
-    if USE_POSTGRES:
-        cur.execute('CREATE TABLE IF NOT EXISTS produtos (id SERIAL PRIMARY KEY, nome TEXT, preco REAL, estoque INTEGER, categoria TEXT)')
-        cur.execute('CREATE TABLE IF NOT EXISTS atendimentos (id SERIAL PRIMARY KEY, cliente TEXT, servico TEXT, valor REAL, data TEXT, produtos TEXT, pagamento TEXT)')
-    else:
-        cur.execute('CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, preco REAL, estoque INTEGER, categoria TEXT)')
-        cur.execute('CREATE TABLE IF NOT EXISTS atendimentos (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente TEXT, servico TEXT, valor REAL, data TEXT, produtos TEXT, pagamento TEXT)')
-    # Cria produtos padrão se estiver vazio
-    cur.execute("SELECT COUNT(*) FROM produtos")
-    qtd = cur.fetchone()[0]
-    if qtd == 0:
-        padrao = [
-            ("Minoxidil 120ml", 85.00, 10, "Tratamento"),
-            ("Pomada Modeladora", 30.00, 15, "Pomada"),
-            ("Gel Cola", 25.00, 20, "Gel"),
-            ("Creme de Barbear", 35.00, 12, "Creme"),
-            ("Óleo para Barba", 40.00, 8, "Óleo"),
-            ("Shampoo 2 em 1", 28.00, 10, "Shampoo")
-        ]
-        for nome, preco, est, cat in padrao:
-            if USE_POSTGRES:
-                cur.execute("INSERT INTO produtos (nome, preco, estoque, categoria) VALUES (%s,%s,%s,%s)", (nome, preco, est, cat))
-            else:
-                cur.execute("INSERT INTO produtos (nome, preco, estoque, categoria) VALUES (?,?,?,?)", (nome, preco, est, cat))
-    conn.commit(); conn.close()
-
-def buscar_atendimentos(filtro=""):
-    conn = get_conn(); cur = conn.cursor()
-    if filtro:
-        q = f"%{filtro}%"
-        if USE_POSTGRES: cur.execute("SELECT * FROM atendimentos WHERE cliente ILIKE %s OR servico ILIKE %s ORDER BY id DESC", (q,q))
-        else: cur.execute("SELECT * FROM atendimentos WHERE cliente LIKE? OR servico LIKE? ORDER BY id DESC", (f"%{filtro}%", f"%{filtro}%"))
-    else:
-        cur.execute("SELECT * FROM atendimentos ORDER BY id DESC")
-    rows = cur.fetchall(); conn.close()
-    lista=[]
-    for r in rows:
-        if USE_POSTGRES: id_,cliente,servico,valor,data,prod,pag = r
-        else: id_=r['id']; cliente=r['cliente']; servico=r['servico']; valor=r['valor']; data=r['data']; prod=r['produtos']; pag=r['pagamento']
-        lista.append({"id":id_,"cliente":cliente,"servico":servico,"valor":valor or 0,"data":data,"prod":prod or "","pag":pag or ""})
-    return lista
-
-BASE = """
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Barbearia - Azul Vermelho Branco</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+HTML_BASE = """
+<!DOCTYPE html>
+<html>
+<head>
+<title>Rei da Navalha - PRO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{background:#f0f3f8;color:#1a1a1a}
-.navbar{background:#0d2a54!important;border-bottom:4px solid #d90429}
-.card-custom{background:#fff;border:1px solid #dde3ed;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.btn-blue{background:#0d2a54;color:#fff;font-weight:800;border:none;border-radius:8px}
-.btn-blue:hover{background:#123a75;color:#fff}
-.btn-red{background:#d90429;color:#fff;font-weight:800;border:none;border-radius:8px}
-.btn-red:hover{background:#b00322;color:#fff}
-.btn-light2{background:#e9eef5;color:#0d2a54;border:none;border-radius:8px;font-weight:600}
-.table{--bs-table-bg:#fff!important;margin:0}
-.table thead th{background:#0d2a54!important;color:#fff!important}
-.produto-item{background:#f8f9fc;border:2px solid #e1e7f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
-.produto-item.selected{background:#e3f2ff;border-color:#0d2a54}
-.badge-cat{background:#d90429;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px}
-.small-label{color:#6c7a90;font-size:12px}
+    body { margin:0; font-family: Arial, sans-serif; background: #0d2d6b; }
+    .header { background: #ffffff; border-bottom: 5px solid #c8102e; padding: 12px 20px; display:flex; justify-content:space-between; align-items:center; }
+    .header h1 { margin:0; color: #000000; font-size: 22px; font-weight: 900; display:flex; align-items:center; gap:8px; }
+    .header h1 span { color: #c8102e; }
+    .crown { font-size:28px; }
+    .header a { text-decoration:none; color:#000; background:#e5e7eb; padding:6px 12px; border-radius:20px; font-size:13px; font-weight:bold; margin-left:5px; border:1px solid #0d2d6b; }
+    .header a.active { background:#c8102e; color:white; border-color:#c8102e; }
+    .container { max-width: 800px; margin: 20px auto; padding: 15px; }
+    .card { background: #ffffff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border-left: 6px solid #c8102e; border-right: 6px solid #0d2d6b; }
+    .card h2 { color: #000000 !important; margin-top:0; }
+    label { color: #000000; font-weight: bold; font-size:13px; display:block; margin-top:12px; }
+    input, select { width:100%; padding:10px; border:2px solid #0d2d6b; border-radius:8px; margin-top:4px; box-sizing:border-box; color:#000; font-weight:bold; background:white; }
+    .btn { background: #c8102e; color: white; border: none; padding: 14px; width:100%; border-radius:8px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; letter-spacing:1px; font-size:15px; }
+    .btn:hover { background:#a00d24; }
+    .prod-item { border:1.5px solid #d1d5db; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; cursor:pointer; background:white; color:#000; }
+    .prod-item.selected { background:#0d2d6b; color:white; border-color:#0d2d6b; }
+    .prod-item.selected small, .prod-item.selected b { color:white !important; }
+    .prod-item b { color:#000; }
+    .prod-item small { color:#555; }
+    .tag { background:#c8102e; color:white; font-size:10px; padding:2px 6px; border-radius:4px; }
+    .prod-item.selected .tag { background:white; color:#c8102e; }
+    .total-box { border:2.5px solid #000; background:#fffbe6; }
+    .stat { background:white; padding:15px; border-radius:10px; text-align:center; border-bottom:4px solid #c8102e; border-top:4px solid #0d2d6b; }
+    .stat h3 { margin:0; color:#000; }
+    .stat p { margin:5px 0 0 0; color:#000; font-weight:bold; }
 </style>
-</head><body>
-<nav class="navbar d-flex justify-content-between p-3">
-<div class="fw-bold text-white">💈 BARBEARIA <span style="color:#ff2a4a">PRO</span></div>
-<div class="d-flex gap-2">
-<a href="/" class="btn btn-light2 btn-sm">Início</a>
-<a href="/produtos" class="btn btn-light2 btn-sm">Produtos</a>
-<a href="/historico" class="btn btn-light2 btn-sm">Histórico</a>
-<a href="/novo" class="btn btn-red btn-sm">+ Novo</a>
+</head>
+<body>
+<div class="header">
+  <h1><span class="crown">👑</span> REI DA <span>NAVALHA</span></h1>
+  <div>
+    <a href="/" class="{{'active' if active=='inicio' else ''}}">Início</a>
+    <a href="/produtos" class="{{'active' if active=='prod' else ''}}">Produtos</a>
+    <a href="/historico" class="{{'active' if active=='hist' else ''}}">Histórico</a>
+    <a href="/novo" style="background:#c8102e; color:white;">+ Novo</a>
+  </div>
 </div>
-</nav>
-<div class="container py-4" style="max-width:950px">{{content|safe}}</div>
+<div class="container">
+{{content}}
+</div>
 <script>
-function toggleProd(el){el.classList.toggle('selected');let cb=el.querySelector('input');cb.checked=!cb.checked;calc()}
-function calc(){let t=parseFloat(document.getElementById('valor_serv').value)||0;document.querySelectorAll('.produto-item.selected').forEach(i=>{t+=parseFloat(i.dataset.preco)||0});document.getElementById('valor_total').value=t.toFixed(2);document.getElementById('vd').innerText='R$ '+t.toFixed(2)}
+function toggleProd(id) {
+  const el = document.getElementById('p-'+id);
+  const input = document.getElementById('produtos_input');
+  let selecionados = input.value ? input.value.split(',').filter(x=>x) : [];
+  if(el.classList.contains('selected')) {
+    el.classList.remove('selected');
+    selecionados = selecionados.filter(x=> x != id);
+  } else {
+    el.classList.add('selected');
+    selecionados.push(id);
+  }
+  input.value = selecionados.join(',');
+  calcTotal();
+}
+function calcTotal() {
+  const servicoVal = parseFloat(document.getElementById('valor_servico').value) || 0;
+  const input = document.getElementById('produtos_input');
+  let selecionados = input.value ? input.value.split(',').filter(x=>x) : [];
+  let totalProd = 0;
+  selecionados.forEach(sid => {
+    const p = document.getElementById('preco-'+sid);
+    if(p) totalProd += parseFloat(p.value);
+  });
+  const total = servicoVal + totalProd;
+  document.getElementById('total_auto').value = total.toFixed(2);
+  document.getElementById('total_view').innerText = 'R$ ' + total.toFixed(2);
+}
 </script>
-</body></html>
+</body>
+</html>
 """
 
-@app.route('/')
+@app.route("/")
 def index():
-    init_db()
-    conn=get_conn(); cur=conn.cursor()
-    try: cur.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM atendimentos"); c=cur.fetchone(); total=c[0]; fat=c[1]
-    except: total=0; fat=0
-    conn.close()
-    at = buscar_atendimentos()[:8]
-    linhas="".join([f"<tr><td>{a['data']}</td><td><b>{a['cliente']}</b></td><td>{a['servico']}<br><span style='color:#d90429;font-size:12px'>{a['prod']}</span></td><td>R$ {float(a['valor']):.2f}</td><td><a href='/imprimir/{a['id']}' target='_blank' class='btn btn-sm btn-light2'>🖨️</a> <a href='/excluir/{a['id']}' class='btn btn-sm btn-red'>X</a></td></tr>" for a in at])
-    html=f"""
-    <div class="row g-3"><div class="col-6"><div class="card-custom p-4"><div class="fs-3 fw-bold" style="color:#0d2a54">{total}</div><div class="small-label">Atendimentos</div></div></div>
-    <div class="col-6"><div class="card-custom p-4"><div class="fs-3 fw-bold" style="color:#d90429">R$ {float(fat):.2f}</div><div class="small-label">Faturado</div></div></div>
-    <div class="col-12"><div class="card-custom p-4 d-flex gap-2"><a href="/novo" class="btn btn-blue w-100 py-3">+ NOVO ATENDIMENTO</a><a href="/exportar_excel" class="btn btn-light2 w-100">📊 Excel</a></div></div></div>
-    <div class="card-custom p-4 mt-4"><h6 class="fw-bold" style="color:#0d2a54">Últimos Atendimentos</h6><table class="table table-striped mt-3"><thead><tr><th>Data</th><th>Cliente</th><th>Serviço + Produtos</th><th>Valor</th><th></th></tr></thead><tbody>{linhas}</tbody></table></div>
+    total_vendas = sum(a['total'] for a in atendimentos_db)
+    content = f"""
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:20px;">
+      <div class="stat"><h3 style="color:#c8102e; font-size:24px;">{len(atendimentos_db)}</h3><p>Atendimentos</p></div>
+      <div class="stat"><h3 style="color:#0d2d6b; font-size:20px;">R$ {total_vendas:.2f}</h3><p>Faturamento</p></div>
+      <div class="stat"><h3 style="font-size:24px;">{len(produtos_db)}</h3><p>Produtos</p></div>
+    </div>
+    <div class="card">
+      <h2>👑 Bem-vindo ao Rei da Navalha</h2>
+      <p style="color:#000; font-weight:bold;">Sistema PRO - Fundo azul, detalhes branco e vermelho, letras pretas.</p>
+      <p style="color:#000;">Gerencie cortes, barbas e venda de Minoxidil, Pomada, Gel e Creme com soma automática.</p>
+      <a href="/novo"><button class="btn">+ Novo Atendimento</button></a>
+    </div>
     """
-    return render_template_string(BASE, content=html)
+    return render_template_string(HTML_BASE.replace("{{content}}", content), active="inicio")
 
-@app.route('/produtos', methods=['GET','POST'])
-def produtos():
-    init_db(); conn=get_conn(); cur=conn.cursor()
-    if request.method=='POST':
-        nome=request.form['nome']; preco=request.form['preco']; estoque=request.form['estoque']; cat=request.form['categoria']
-        if USE_POSTGRES: cur.execute("INSERT INTO produtos (nome, preco, estoque, categoria) VALUES (%s,%s,%s,%s)", (nome, preco, estoque, cat))
-        else: cur.execute("INSERT INTO produtos (nome, preco, estoque, categoria) VALUES (?,?,?,?)", (nome, preco, estoque, cat))
-        conn.commit(); conn.close(); return redirect('/produtos')
-    cur.execute("SELECT * FROM produtos ORDER BY id DESC"); rows=cur.fetchall(); conn.close()
-    linhas=""
-    for r in rows:
-        idd=r[0] if USE_POSTGRES else r['id']; nome=r[1] if USE_POSTGRES else r['nome']; preco=r[2] if USE_POSTGRES else r['preco']; est=r[3] if USE_POSTGRES else r['estoque']; cat=r[4] if USE_POSTGRES else r['categoria']
-        linhas+=f"<tr><td><b>{nome}</b> <span class='badge-cat'>{cat}</span></td><td>R$ {float(preco or 0):.2f}</td><td>{est}</td><td><a href='/excluir_prod/{idd}' class='btn btn-sm btn-red'>X</a></td></tr>"
-    html=f"""<div class="card-custom p-4"><h5 class="fw-bold" style="color:#0d2a54">Produtos para Venda</h5>
-    <form method="POST" class="row g-2 my-3">
-      <div class="col-md-3"><input name="nome" class="form-control" placeholder="Nome (ex: Minoxidil)" required></div>
-      <div class="col-md-2"><select name="categoria" class="form-control"><option>Minoxidil</option><option>Pomada</option><option>Gel</option><option>Creme</option><option>Óleo</option><option>Shampoo</option><option>Outro</option></select></div>
-      <div class="col-md-2"><input name="preco" type="number" step="0.01" class="form-control" placeholder="Preço" required></div>
-      <div class="col-md-2"><input name="estoque" type="number" class="form-control" placeholder="Qtd" required></div>
-      <div class="col-md-3"><button class="btn btn-blue w-100">Adicionar Produto</button></div>
-    </form>
-    <table class="table table-striped"><thead><tr><th>Produto</th><th>Preço</th><th>Estoque</th><th></th></tr></thead><tbody>{linhas}</tbody></table></div>"""
-    return render_template_string(BASE, content=html)
-
-@app.route('/novo', methods=['GET','POST'])
+@app.route("/novo", methods=["GET", "POST"])
 def novo():
-    init_db(); conn=get_conn(); cur=conn.cursor()
-    cur.execute("SELECT * FROM produtos WHERE estoque > 0 ORDER BY categoria, nome ASC"); produtos=cur.fetchall()
-    if request.method=='POST':
-        cliente=request.form['cliente']; servico=request.form['servico']; valor=request.form['valor_total']; data=datetime.now().strftime("%d/%m/%Y %H:%M"); pag=request.form.get('pagamento','Dinheiro')
-        sels=request.form.getlist('produtos'); nomes=[]
-        for pid in sels:
-            if USE_POSTGRES: cur.execute("SELECT nome FROM produtos WHERE id=%s", (int(pid),))
-            else: cur.execute("SELECT nome FROM produtos WHERE id=?", (int(pid),))
-            pr=cur.fetchone()
-            if pr: nomes.append(pr[0] if USE_POSTGRES else pr['nome'])
-            if USE_POSTGRES: cur.execute("UPDATE produtos SET estoque=estoque-1 WHERE id=%s", (int(pid),))
-            else: cur.execute("UPDATE produtos SET estoque=estoque-1 WHERE id=?", (int(pid),))
-        prod_txt=", ".join(nomes)
-        if USE_POSTGRES: cur.execute("INSERT INTO atendimentos (cliente, servico, valor, data, produtos, pagamento) VALUES (%s,%s,%s,%s,%s,%s)", (cliente, servico, valor, data, prod_txt, pag))
-        else: cur.execute("INSERT INTO atendimentos (cliente, servico, valor, data, produtos, pagamento) VALUES (?,?,?,?,?,?)", (cliente, servico, valor, data, prod_txt, pag))
-        conn.commit(); conn.close(); return redirect('/')
-    lista=""
-    for r in produtos:
-        idd=r[0] if USE_POSTGRES else r['id']; nome=r[1] if USE_POSTGRES else r['nome']; preco=float(r[2] if USE_POSTGRES else r['preco'] or 0); cat=r[4] if USE_POSTGRES else r['categoria']
-        lista+=f"<div class='produto-item' data-preco='{preco}' onclick='toggleProd(this)'><div><input type='checkbox' name='produtos' value='{idd}' style='display:none'><span class='badge-cat'>{cat}</span> <b>{nome}</b><br><span class='small-label'>R$ {preco:.2f}</span></div><span>✓</span></div>"
-    if not lista: lista="<div class='small-label'>Cadastre produtos primeiro</div>"
-    conn.close()
-    html=f"""
-    <div class="card-custom p-4"><h5 class="fw-bold" style="color:#0d2a54">Novo Atendimento</h5>
-    <form method="POST" class="row g-3 mt-2">
-      <div class="col-md-6"><label class="small-label">Cliente *</label><input name="cliente" class="form-control" required></div>
-      <div class="col-md-6"><label class="small-label">Pagamento</label><select name="pagamento" class="form-control"><option>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Fiado</option></select></div>
-      <div class="col-md-6"><label class="small-label">Serviço *</label><select name="servico" class="form-control" onchange="document.getElementById('valor_serv').value=this.selectedOptions[0].dataset.preco;calc()">
-        <option data-preco="35" value="Corte Simples">Corte Simples - R$ 35</option>
-        <option data-preco="20" value="Barba">Barba - R$ 20</option>
-        <option data-preco="50" value="Corte + Barba">Corte + Barba - R$ 50</option>
-        <option data-preco="45" value="Corte + Sobrancelha">Corte + Sobrancelha - R$ 45</option>
-        <option data-preco="70" value="Combo Premium">Combo Premium - R$ 70</option>
-      </select></div>
-      <div class="col-md-3"><label class="small-label">Valor Serviço</label><input id="valor_serv" type="number" step="0.01" value="35" class="form-control" oninput="calc()"></div>
-      <div class="col-md-3"><label class="small-label">Total (Auto)</label><input id="valor_total" name="valor_total" class="form-control" style="border:2px solid #0d2a54!important;font-weight:bold" readonly><div id="vd" class="small-label" style="color:#d90429;font-weight:bold">R$ 35.00</div></div>
-      <div class="col-12 mt-3"><label class="small-label fw-bold" style="color:#0d2a54">PRODUTOS PARA VENDA - clique para adicionar (soma automático)</label><div style="max-height:300px;overflow:auto" class="mt-2">{lista}</div></div>
-      <div class="col-12"><button class="btn btn-red w-100 py-2 mt-3">SALVAR ATENDIMENTO</button></div>
-    </form></div>
+    if request.method == "POST":
+        cliente = request.form.get("cliente")
+        servico = request.form.get("servico")
+        valor_servico = float(request.form.get("valor_servico") or 0)
+        produtos_ids = request.form.get("produtos", "")
+        total = float(request.form.get("total_auto") or 0)
+        pagamento = request.form.get("pagamento")
+        prod_nomes = []
+        if produtos_ids:
+            for pid in produtos_ids.split(","):
+                if pid.strip().isdigit():
+                    p = next((x for x in produtos_db if x["id"]==int(pid)), None)
+                    if p: prod_nomes.append(p["nome"])
+        atendimentos_db.append({
+            "id": len(atendimentos_db)+1,
+            "cliente": cliente,
+            "servico": servico,
+            "valor_servico": valor_servico,
+            "produtos": ", ".join(prod_nomes),
+            "total": total,
+            "pagamento": pagamento,
+            "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+        })
+        return redirect("/historico")
+    
+    produtos_html = ""
+    for p in produtos_db:
+        produtos_html += f"""
+        <div class="prod-item" id="p-{p['id']}" onclick="toggleProd({p['id']})">
+          <div><span class="tag">{p['categoria']}</span> <b>{p['nome']}</b><br><small>R$ {p['preco']:.2f}</small></div>
+          <div>✓</div>
+          <input type="hidden" id="preco-{p['id']}" value="{p['preco']}">
+        </div>
+        """
+
+    servicos_opt = "".join([f'<option>{s}</option>' for s in servicos])
+    
+    content = f"""
+    <div class="card">
+      <h2>Novo Atendimento</h2>
+      <form method="POST">
+        <label>Cliente *</label>
+        <input name="cliente" required placeholder="Nome do cliente">
+        <label>Pagamento</label>
+        <select name="pagamento"><option>Dinheiro</option><option>Pix</option><option>Cartão</option></select>
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px;">
+          <div>
+            <label>Serviço *</label>
+            <select name="servico">{servicos_opt}</select>
+          </div>
+          <div>
+            <label>Valor Serviço</label>
+            <input id="valor_servico" name="valor_servico" type="number" value="35" oninput="calcTotal()">
+          </div>
+          <div>
+            <label>Total (Auto)</label>
+            <input id="total_auto" class="total-box" name="total_auto" readonly style="font-weight:900; color:#000;" value="35.00">
+            <small id="total_view" style="color:#c8102e; font-weight:900;">R$ 35.00</small>
+          </div>
+        </div>
+        <label style="margin-top:20px;">PRODUTOS PARA VENDA - clique para adicionar (soma automático)</label>
+        <input type="hidden" name="produtos" id="produtos_input">
+        <div style="max-height:320px; overflow:auto; margin-top:8px; padding-right:5px;">
+        {produtos_html}
+        </div>
+        <button class="btn" type="submit">SALVAR ATENDIMENTO</button>
+      </form>
+    </div>
     """
-    return render_template_string(BASE, content=html)
+    return render_template_string(HTML_BASE.replace("{{content}}", content), active="novo")
 
-@app.route('/historico')
+@app.route("/historico")
 def historico():
-    q=request.args.get('q',''); lista=buscar_atendimentos(q)
-    linhas="".join([f"<tr><td>{a['data']}</td><td><b>{a['cliente']}</b><br><span class='small-label'>{a['pag']}</span></td><td>{a['servico']}<br><span style='color:#d90429;font-size:12px'>{a['prod']}</span></td><td>R$ {float(a['valor']):.2f}</td><td><a href='/imprimir/{a['id']}' target='_blank' class='btn btn-sm btn-light2'>🖨️</a> <a href='/excluir/{a['id']}' class='btn btn-sm btn-red'>X</a></td></tr>" for a in lista])
-    html=f"""<div class="card-custom p-4"><div class="d-flex justify-content-between mb-3"><h5 class="fw-bold" style="color:#0d2a54">Histórico</h5><a href="/exportar_excel" class="btn btn-blue btn-sm">Excel</a></div>
-    <form class="mb-3"><div class="input-group"><input name="q" value="{q}" class="form-control" placeholder="Pesquisar cliente"><button class="btn btn-blue">Buscar</button></div></form>
-    <table class="table table-striped"><thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th>Valor</th><th></th></tr></thead><tbody>{linhas}</tbody></table></div>"""
-    return render_template_string(BASE, content=html)
+    rows = ""
+    for a in reversed(atendimentos_db):
+        rows += f"<tr style='color:#000;'><td style='padding:8px; border-bottom:1px solid #ccc;'>{a['data']}</td><td style='padding:8px; border-bottom:1px solid #ccc; font-weight:bold;'>{a['cliente']}</td><td style='padding:8px; border-bottom:1px solid #ccc;'>{a['servico']}<br><small style='color:#c8102e; font-weight:bold;'>{a['produtos']}</small></td><td style='padding:8px; border-bottom:1px solid #ccc; font-weight:900;'>R$ {a['total']:.2f}</td></tr>"
+    if not rows:
+        rows = "<tr><td colspan=4 style='padding:20px; text-align:center; color:#000; font-weight:bold;'>Nenhum atendimento ainda</td></tr>"
+    content = f"""
+    <div class="card">
+      <h2>Histórico de Atendimentos</h2>
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="background:#0d2d6b; color:white;"><th style="padding:10px; text-align:left;">Data</th><th style="padding:10px; text-align:left;">Cliente</th><th style="padding:10px; text-align:left;">Serviço + Produtos</th><th style="padding:10px; text-align:left;">Total</th></tr>
+        {rows}
+      </table>
+    </div>
+    """
+    return render_template_string(HTML_BASE.replace("{{content}}", content), active="hist")
 
-@app.route('/exportar_excel')
-def exportar_excel():
-    lista=buscar_atendimentos()
-    try:
-        import openpyxl; wb=openpyxl.Workbook(); ws=wb.active; ws.title="Barbearia"; ws.append(["Data","Cliente","Serviço","Produtos Vendidos","Pagamento","Valor"])
-        for a in lista: ws.append([a['data'],a['cliente'],a['servico'],a['prod'],a['pag'],float(a['valor'])])
-        bio=BytesIO(); wb.save(bio); bio.seek(0)
-        return send_file(bio, as_attachment=True, download_name="barbearia.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    except:
-        out="Data,Cliente,Servico,Produtos,Pagamento,Valor\n"+"\n".join([f"\"{a['data']}\",\"{a['cliente']}\",\"{a['servico']}\",\"{a['prod']}\",\"{a['pag']}\",{a['valor']}" for a in lista])
-        bio=BytesIO(out.encode()); return send_file(bio, as_attachment=True, download_name="barbearia.csv", mimetype="text/csv")
+@app.route("/produtos")
+def produtos():
+    rows = ""
+    for p in produtos_db:
+        rows += f"<tr style='color:#000;'><td style='padding:10px; border-bottom:1px solid #ccc;'><span class='tag'>{p['categoria']}</span> <b style='margin-left:5px;'>{p['nome']}</b></td><td style='padding:10px; border-bottom:1px solid #ccc; font-weight:900;'>R$ {p['preco']:.2f}</td></tr>"
+    content = f"""
+    <div class="card">
+      <h2>👑 Produtos - Rei da Navalha</h2>
+      <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+        <tr style="background:#0d2d6b; color:white;"><th style="padding:10px; text-align:left;">Produto</th><th style="padding:10px; text-align:left;">Preço</th></tr>
+        {rows}
+      </table>
+    </div>
+    """
+    return render_template_string(HTML_BASE.replace("{{content}}", content), active="prod")
 
-@app.route('/imprimir/<int:id>')
-def imprimir(id):
-    conn=get_conn(); cur=conn.cursor()
-    if USE_POSTGRES: cur.execute("SELECT * FROM atendimentos WHERE id=%s", (id,))
-    else: cur.execute("SELECT * FROM atendimentos WHERE id=?", (id,))
-    r=cur.fetchone(); conn.close()
-    if not r: return "Não achado"
-    a = {"id":r[0] if USE_POSTGRES else r['id'], "cliente":r[1] if USE_POSTGRES else r['cliente'], "servico":r[2] if USE_POSTGRES else r['servico'], "valor":r[3] if USE_POSTGRES else r['valor'], "data":r[4] if USE_POSTGRES else r['data'], "prod":r[5] if USE_POSTGRES else r['produtos'], "pag":r[6] if USE_POSTGRES else r['pagamento']}
-    return f"""<html><head><meta charset="utf-8"><style>body{{font-family:Arial;padding:30px}}.box{{border:1px solid #ddd;padding:15px;border-radius:8px;margin-bottom:15px}}.btn{{background:#0d2a54;color:#fff;padding:10px 20px;border:none;border-radius:6px;font-weight:bold}}@media print{{.no-print{{display:none}}}}</style></head>
-    <body><h2 style="color:#0d2a54">💈 BARBEARIA PRO - #{a['id']}</h2><p>{a['data']}</p><div class="box"><b>Cliente:</b> {a['cliente']}<br><b>Pagamento:</b> {a['pag']}</div><div class="box"><b>Serviço:</b> {a['servico']}<br><b>Produtos vendidos:</b> {a['prod']}</div><div class="box"><h3 style="color:#d90429">Total: R$ {float(a['valor']):.2f}</h3></div><div class="no-print"><button class="btn" onclick="window.print()">🖨️ IMPRIMIR</button></div></body></html>"""
-
-@app.route('/excluir/<int:id>')
-def excluir(id):
-    conn=get_conn(); cur=conn.cursor()
-    if USE_POSTGRES: cur.execute("DELETE FROM atendimentos WHERE id=%s", (id,))
-    else: cur.execute("DELETE FROM atendimentos WHERE id=?", (id,))
-    conn.commit(); conn.close(); return redirect('/historico')
-
-@app.route('/excluir_prod/<int:id>')
-def excluir_prod(id):
-    conn=get_conn(); cur=conn.cursor()
-    if USE_POSTGRES: cur.execute("DELETE FROM produtos WHERE id=%s", (id,))
-    else: cur.execute("DELETE FROM produtos WHERE id=?", (id,))
-    conn.commit(); conn.close(); return redirect('/produtos')
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
