@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, request, redirect
 import os
 from datetime import datetime
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -56,6 +57,7 @@ HTML_BASE = """
     .mini-btn{ padding:7px 12px; border-radius:8px; border:none; font-weight:800; font-size:12px; cursor:pointer; margin-left:6px; text-decoration:none; display:inline-block; }
     .badge-pago{ background:#dcfce7; color:#166534; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
     .badge-pend{ background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
+    .import-box{ background:#f8fafc; border:2px dashed #0d2d6b; padding:16px; border-radius:14px; margin-top:12px; }
 </style>
 </head>
 <body>
@@ -179,20 +181,89 @@ def mensalistas():
 @app.route("/produtos", methods=["GET","POST"])
 def produtos():
     global produtos_db
+    msg = ""
     if request.method=="POST":
-        acao=request.form.get("acao")
-        mid=request.form.get("id")
-        if acao=="novo":
-            produtos_db.append({"id": next_id(produtos_db),"nome": request.form.get("nome"),"categoria": request.form.get("categoria"),"preco": float(request.form.get("preco") or 0)})
-        elif acao=="excluir" and mid:
-            produtos_db = [x for x in produtos_db if str(x["id"])!=str(mid)]
-        elif acao=="editar" and mid:
-            p=next((x for x in produtos_db if str(x["id"])==str(mid)),None)
-            if p:
-                p["nome"]=request.form.get("nome")
-                p["categoria"]=request.form.get("categoria")
-                p["preco"]=float(request.form.get("preco"))
-        return redirect("/produtos")
+        if 'arquivo' in request.files and request.files['arquivo'].filename != '':
+            file = request.files['arquivo']
+            try:
+                try:
+                    import pandas as pd
+                    df = pd.read_excel(file)
+                    cols = {c.lower().strip(): c for c in df.columns}
+                    def find_col(names):
+                        for n in names:
+                            for k,v in cols.items():
+                                if n in k:
+                                    return v
+                        return None
+                    col_nome = find_col(['produto','nome','descricao','descrição','item'])
+                    col_preco = find_col(['valor revenda','preco','preço','valor','price','revenda'])
+                    col_cat = find_col(['categoria','cat','tipo','grupo'])
+                    count=0
+                    for _, row in df.iterrows():
+                        nome = str(row[col_nome]).strip() if col_nome and str(row[col_nome])!='nan' else ""
+                        if not nome or nome.lower() in ['nan','none','']: continue
+                        if any(p['nome'].lower()==nome.lower() for p in produtos_db): 
+                            p_ex = next(p for p in produtos_db if p['nome'].lower()==nome.lower())
+                            try:
+                                if col_preco:
+                                    pr = float(row[col_preco])
+                                    if pr>0: p_ex['preco']=pr
+                            except: pass
+                            continue
+                        try:
+                            preco = float(row[col_preco]) if col_preco else 0.0
+                        except:
+                            preco = 0.0
+                        cat = str(row[col_cat]).strip() if col_cat and str(row[col_cat])!='nan' else "Geral"
+                        if not cat or cat.lower()=='nan': cat="Geral"
+                        if preco<=0: continue
+                        produtos_db.append({"id": next_id(produtos_db), "nome": nome, "categoria": cat, "preco": preco})
+                        count+=1
+                    msg = f"<div style='background:#dcfce7; color:#166534; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>✅ {count} produtos importados com sucesso! {len(df)} linhas lidas.</div>"
+                except ImportError:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(file)
+                    ws = wb.active
+                    headers = [str(ws.cell(1,c).value).lower() if ws.cell(1,c).value else "" for c in range(1, ws.max_column+1)]
+                    def idx_of(names):
+                        for i,h in enumerate(headers):
+                            for n in names:
+                                if n in h: return i
+                        return None
+                    i_nome = idx_of(['produto','nome','descricao'])
+                    i_preco = idx_of(['valor revenda','preco','valor'])
+                    i_cat = idx_of(['categoria','tipo'])
+                    count=0
+                    for r in range(2, ws.max_row+1):
+                        nome = str(ws.cell(r, (i_nome+1) if i_nome is not None else 1).value or "").strip()
+                        if not nome or nome.lower()=='none': continue
+                        if any(p['nome'].lower()==nome.lower() for p in produtos_db): continue
+                        try:
+                            preco = float(ws.cell(r, (i_preco+1) if i_preco is not None else 2).value or 0)
+                        except: preco=0
+                        if preco<=0: continue
+                        cat = str(ws.cell(r, (i_cat+1) if i_cat is not None else 3).value or "Geral").strip()
+                        if not cat or cat.lower()=='none': cat="Geral"
+                        produtos_db.append({"id": next_id(produtos_db), "nome": nome, "categoria": cat, "preco": preco})
+                        count+=1
+                    msg = f"<div style='background:#dcfce7; color:#166534; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>✅ {count} produtos importados!</div>"
+            except Exception as e:
+                msg = f"<div style='background:#fee2e2; color:#991b1b; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>❌ Erro ao importar: {e}</div>"
+        else:
+            acao=request.form.get("acao")
+            mid=request.form.get("id")
+            if acao=="novo":
+                produtos_db.append({"id": next_id(produtos_db),"nome": request.form.get("nome"),"categoria": request.form.get("categoria"),"preco": float(request.form.get("preco") or 0)})
+            elif acao=="excluir" and mid:
+                produtos_db = [x for x in produtos_db if str(x["id"])!=str(mid)]
+            elif acao=="editar" and mid:
+                p=next((x for x in produtos_db if str(x["id"])==str(mid)),None)
+                if p:
+                    p["nome"]=request.form.get("nome")
+                    p["categoria"]=request.form.get("categoria")
+                    p["preco"]=float(request.form.get("preco"))
+            return redirect("/produtos")
     edit_id = request.args.get("edit", type=int)
     rows=""
     for p in produtos_db:
@@ -209,6 +280,7 @@ def produtos():
             <td style='padding:12px; border-bottom:1px solid #e2e8f0; text-align:right;'><a href="/produtos?edit={p['id']}" class="mini-btn" style="background:#fef3c7;">Editar</a>
             <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{p['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form></td></tr>"""
     content = f"""
+    {msg}
     <div class="card">
       <h2>Novo Produto</h2>
       <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
@@ -218,6 +290,16 @@ def produtos():
         <div><label>Preco</label><input name="preco" type="number" step="0.01" required></div>
         <div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div>
       </form>
+      
+      <div class="import-box">
+        <h3 style="margin:0 0 8px 0; font-size:14px; font-weight:900; color:#0d2d6b;">📥 Importar Planilha (Excel)</h3>
+        <p style="margin:0 0 10px 0; font-size:12px; color:#64748b;">Encaminhe sua planilha com os produtos da oficina/barbearia. Aceita .xlsx com colunas PRODUTO / VALOR REVENDA / CATEGORIA ou NOME / PRECO / CATEGORIA</p>
+        <form method="POST" enctype="multipart/form-data" style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:end;">
+          <div><input type="file" name="arquivo" accept=".xlsx,.xls,.csv" required style="background:white;"></div>
+          <div><button class="btn btn-blue" style="margin:0; padding:12px 20px;">IMPORTAR</button></div>
+        </form>
+        <small style="color:#94a3b8;">Dica: pode usar a sua PLANILHA_OFICINA_CERTA.xlsx direto. Ele ignora produtos sem preço.</small>
+      </div>
     </div>
     <div class="card">
       <h2>Produtos ({len(produtos_db)})</h2>
