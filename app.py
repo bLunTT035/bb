@@ -344,8 +344,6 @@ def novo():
         data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
         dia_hoje = datetime.now().strftime("%d/%m/%Y")
         atendimentos_db.append({"id": len(atendimentos_db)+1,"cliente": cliente,"telefone": telefone,"servico": servico,"valor_servico": valor_servico,"produtos": ", ".join(prod_nomes),"total": total,"pagamento": pagamento,"data": data_hoje})
-
-        # ATUALIZA CONTROLE DE AVULSOS
         cli = next((x for x in clientes_avulso_db if x["nome"].lower()==cliente.lower()), None)
         if not cli:
             clientes_avulso_db.append({"id": next_id(clientes_avulso_db), "nome": cliente, "telefone": telefone, "primeira_visita": dia_hoje, "ultima_visita": dia_hoje, "visitas_mes": 1, "historico": [f"{dia_hoje} - {servico}"]})
@@ -354,9 +352,7 @@ def novo():
             cli["ultima_visita"]=dia_hoje
             cli["visitas_mes"]+=1
             cli["historico"].append(f"{dia_hoje} - {servico}")
-
         return redirect("/clientes")
-
     produtos_html = ""
     for p in produtos_db:
         produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small>R$ {p["preco"]:.2f}</small></div><div>OK</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
@@ -410,7 +406,6 @@ def mensalistas():
         badge = "<span class='badge-pago'>PAGO</span>" if m["status"]=="Pago" else "<span class='badge-pend'>PENDENTE</span>"
         hist = "<br>".join(m["historico"][-3:]) if m.get("historico") else "<small style='color:#94a3b8;'>Nenhum</small>"
         form_edit = f"""<form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:12px;"><input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{m['id']}"><div style="display:grid; grid-template-columns:2fr 1.5fr 1fr 1fr 1fr; gap:8px;"><input name="nome" value="{m['nome']}" required><input name="telefone" value="{m.get('telefone','')}" placeholder="Telefone"><select name="plano">{options_planos}</select><input name="valor" type="number" value="{m['valor']}"><input name="vencimento" type="number" value="{m['vencimento']}"></div><button class="mini-btn" style="background:#0d2d6b; color:white; margin-top:8px;">Salvar</button><a href="/mensalistas" class="mini-btn" style="background:#e2e8f0;">Cancelar</a></form>""" if edit_id==m["id"] else ""
-        # APENAS ESSA PARTE FOI DEIXADA MAIS DIDATICA - MESMA LOGICA, VISUAL MELHOR
         lista+=f"""
         <div class="card" style="border-left:5px solid #0d2d6b;">
           <div style="display:flex; justify-content:space-between; align-items:start;">
@@ -445,7 +440,9 @@ def clientes():
     if request.method=="POST":
         acao=request.form.get("acao"); mid=request.form.get("id")
         if acao=="novo":
-            clientes_avulso_db.append({"id": next_id(clientes_avulso_db), "nome": request.form.get("nome"), "telefone": request.form.get("telefone"), "primeira_visita": request.form.get("primeira") or datetime.now().strftime("%d/%m/%Y"), "ultima_visita": request.form.get("ultima") or datetime.now().strftime("%d/%m/%Y"), "visitas_mes": int(request.form.get("visitas") or 1), "historico": [f"{datetime.now().strftime('%d/%m')} - Cadastro"]})
+            serv = request.form.get("servico") or request.form.get("servico_novo") or "Corte Simples"
+            primeira = request.form.get("primeira") or datetime.now().strftime("%d/%m/%Y")
+            clientes_avulso_db.append({"id": next_id(clientes_avulso_db), "nome": request.form.get("nome"), "telefone": request.form.get("telefone"), "primeira_visita": primeira, "ultima_visita": request.form.get("ultima") or primeira, "visitas_mes": int(request.form.get("visitas") or 1), "historico": [f"{primeira} - {serv}"]})
         elif acao=="editar" and mid:
             c=next((x for x in clientes_avulso_db if str(x["id"])==str(mid)), None)
             if c:
@@ -456,15 +453,19 @@ def clientes():
             c=next((x for x in clientes_avulso_db if str(x["id"])==str(mid)), None)
             if c:
                 hoje=datetime.now().strftime("%d/%m/%Y")
-                c["ultima_visita"]=hoje; c["visitas_mes"]+=1; c["historico"].append(f"{hoje} - Visita avulsa")
+                servico_escolhido = request.form.get("servico_visita") or "Visita avulsa"
+                c["ultima_visita"]=hoje; c["visitas_mes"]+=1; c["historico"].append(f"{hoje} - {servico_escolhido}")
         return redirect("/clientes")
 
     edit_id=request.args.get("edit", type=int)
+    # opções de serviço vindas da sua lista de Avulso
+    options_servicos = "".join([f'<option value="{s["nome"]}">{s["nome"]} - R$ {s["valor"]:.0f}</option>' for s in servicos_avulso])
+
     lista=""
     for c in reversed(clientes_avulso_db):
         tag = f'<span class="tag tag-green">{c["visitas_mes"]}x no mês</span>' if c["visitas_mes"]>=2 else f'<span class="tag">{c["visitas_mes"]}x</span>'
         alerta = '<span class="tag tag-orange">🔥 Virar mensalista?</span>' if c["visitas_mes"]>=2 else ''
-        hist="<br>".join(c["historico"][-4:])
+        hist="<br>".join(c["historico"][-5:])
         form_edit=f"""
         <form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:10px; display:grid; grid-template-columns:1fr 1fr 1fr 1fr 0.5fr; gap:6px;">
           <input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{c['id']}">
@@ -474,10 +475,14 @@ def clientes():
         lista+=f"""
         <div class="card" style="border-left:5px solid #0d2d6b;">
           <div style="display:flex; justify-content:space-between;"><div><b>{c['nome']}</b> - {c['telefone']}<br><small>Veio: {c['primeira_visita']} | Voltou: {c['ultima_visita']}</small></div><div>{tag} {alerta}</div></div>
-          <div style="margin-top:8px; background:#f8fafc; padding:8px; border-radius:8px; font-size:12px;">{hist}</div>
+          <div style="margin-top:8px; background:#f8fafc; padding:10px; border-radius:10px; font-size:12px; border:1px solid #e2e8f0;"><b style="font-size:10px; color:#0d2d6b;">HISTÓRICO DE CORTES:</b><br>{hist}</div>
           {form_edit}
-          <div style="margin-top:10px;">
-            <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="nova_visita"><input type="hidden" name="id" value="{c['id']}"><button class="mini-btn" style="background:#0d2d6b; color:white;">+ Nova Visita</button></form>
+          <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:#f1f5f9; padding:10px; border-radius:10px;">
+            <form method="POST" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <input type="hidden" name="acao" value="nova_visita"><input type="hidden" name="id" value="{c['id']}">
+              <select name="servico_visita" style="width:auto; min-width:180px; margin:0; padding:8px 10px; font-size:12px; border-radius:8px; font-weight:800;">{options_servicos}</select>
+              <button class="btn-small" style="background:#0d2d6b; color:white; padding:9px 14px; margin:0;">+ Nova Visita</button>
+            </form>
             <a href="/clientes?edit={c['id']}" class="mini-btn" style="background:#fef3c7;">Editar</a>
             <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{c['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form>
           </div>
@@ -486,17 +491,18 @@ def clientes():
     content=f"""
     <div class="card">
       <h2>👥 Controle Avulso - Quem veio mais de 1x no mês</h2>
-      <form method="POST" style="display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr 0.5fr 1fr; gap:8px; align-items:end;">
+      <form method="POST" style="display:grid; grid-template-columns:1.2fr 1fr 0.8fr 0.8fr 1.2fr 0.4fr 0.8fr; gap:8px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
         <div><label>Nome</label><input name="nome" required></div>
         <div><label>Telefone</label><input name="telefone" required></div>
         <div><label>Dia Veio</label><input name="primeira" value="{datetime.now().strftime('%d/%m/%Y')}"></div>
         <div><label>Dia Voltou</label><input name="ultima" value="{datetime.now().strftime('%d/%m/%Y')}"></div>
+        <div><label>Qual Corte?</label><select name="servico" style="margin-top:6px;">{options_servicos}</select></div>
         <div><label>Qtd</label><input name="visitas" type="number" value="1"></div>
         <div><button class="btn btn-blue">Add Cliente</button></div>
       </form>
     </div>
-    {lista if lista else "<div class='card'><p>Nenhum cliente avulso ainda. Quando você lançar um atendimento no + Novo, ele já cria aqui automaticamente.</p></div>"}
+    {lista if lista else "<div class='card'><p>Nenhum cliente avulso ainda. Quando você lançar um atendimento no + Novo, ele já cria aqui automaticamente com o tipo de corte.</p></div>"}
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="clientes")
 
