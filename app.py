@@ -51,43 +51,43 @@ HTML_BASE = """
 <style>
     *{font-family:'Inter',sans-serif; box-sizing:border-box}
     body { margin:0; background: linear-gradient(135deg, #0d2d6b 0%, #06163a 100%); min-height:100vh; }
- .header { background: rgba(255,255,255,0.97); border-bottom: 4px solid #c8102e; padding: 14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:10px; }
- .header h1 { margin:0; color:#000; font-size:23px; font-weight:900; display:flex; align-items:center; gap:8px; flex:1; }
- .header h1 span { color:#c8102e; }
- .nav { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
- .nav a { text-decoration:none; color:#000; background:#f1f5f9; padding:8px 14px; border-radius:100px; font-size:13px; font-weight:800; border:1.5px solid #e2e8f0; white-space:nowrap; }
- .nav a.active { background:#0d2d6b; color:white; }
- .nav a.cta { background:#c8102e; color:white; }
- .hamburger { display:none; background:#0d2d6b; color:white; border:none; border-radius:10px; padding:8px 12px; font-size:20px; font-weight:900; cursor:pointer; }
- .container { max-width: 950px; margin: 28px auto; padding: 16px; }
- .card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); position:relative; overflow:hidden; margin-bottom:16px; }
- .card::before{content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg, #0d2d6b, #c8102e);}
- .card h2 { color:#000!important; margin-top:0; font-weight:900; font-size:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
- .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
- .stat { background:#fff; padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); }
- .stat b{ display:block; font-size:11px; text-transform:uppercase; color:#64748b; margin-bottom:6px; }
- .stat h3{ margin:0; font-size:26px; font-weight:900; }
+.header { background: rgba(255,255,255,0.97); border-bottom: 4px solid #c8102e; padding: 14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; flex-wrap:wrap; gap:10px; }
+.header h1 { margin:0; color:#000; font-size:23px; font-weight:900; display:flex; align-items:center; gap:8px; flex:1; }
+.header h1 span { color:#c8102e; }
+.nav { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.nav a { text-decoration:none; color:#000; background:#f1f5f9; padding:8px 14px; border-radius:100px; font-size:13px; font-weight:800; border:1.5px solid #e2e8f0; white-space:nowrap; }
+.nav a.active { background:#0d2d6b; color:white; }
+.nav a.cta { background:#c8102e; color:white; }
+.hamburger { display:none; background:#0d2d6b; color:white; border:none; border-radius:10px; padding:8px 12px; font-size:20px; font-weight:900; cursor:pointer; }
+.container { max-width: 950px; margin: 28px auto; padding: 16px; }
+.card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); position:relative; overflow:hidden; margin-bottom:16px; }
+.card::before{content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg, #0d2d6b, #c8102e);}
+.card h2 { color:#000!important; margin-top:0; font-weight:900; font-size:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+.grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
+.stat { background:#fff; padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); }
+.stat b{ display:block; font-size:11px; text-transform:uppercase; color:#64748b; margin-bottom:6px; }
+.stat h3{ margin:0; font-size:26px; font-weight:900; }
     label { color: #000; font-weight: 800; font-size:12px; display:block; margin-top:14px; text-transform:uppercase; }
     input, select { width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:12px; margin-top:6px; box-sizing:border-box; color:#000; font-weight:700; background:#f8fafc; }
- .btn { background: linear-gradient(135deg, #c8102e 0%, #8f0c22 100%); color: white; border: none; padding: 14px; width:100%; border-radius:12px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; font-size:14px; }
- .btn-blue{ background: linear-gradient(135deg, #0d2d6b 0%, #1e4bb8 100%); }
- .btn-small{ padding:6px 10px; border-radius:8px; border:none; font-weight:800; font-size:11px; cursor:pointer; }
- .prod-item { border:2px solid #f1f5f9; padding:12px 14px; border-radius:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:#f8fafc; color:#000; }
- .prod-item.selected { background:#0d2d6b; color:white; border-color:#0d2d6b; }
- .tag { background:#c8102e; color:white; font-size:10px; padding:3px 8px; border-radius:100px; font-weight:800; }
- .tag-green { background:#16a34a; }.tag-orange { background:#f59e0b; }
- .mini-btn{ padding:7px 12px; border-radius:8px; border:none; font-weight:800; font-size:12px; cursor:pointer; margin-left:6px; text-decoration:none; display:inline-block; }
- .badge-pago{ background:#dcfce7; color:#166534; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
- .badge-pend{ background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
- .valor-card{ background:#f8fafc; padding:12px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-left:4px solid #0d2d6b; }
- .valor-card.mensal{ border-left-color:#c8102e; }
- .valor-actions{ display:flex; gap:4px; }
- .import-box{ background:#f8fafc; border:2px dashed #0d2d6b; padding:16px; border-radius:14px; margin-top:12px; }
+.btn { background: linear-gradient(135deg, #c8102e 0%, #8f0c22 100%); color: white; border: none; padding: 14px; width:100%; border-radius:12px; font-weight:900; margin-top:18px; cursor:pointer; text-transform:uppercase; font-size:14px; }
+.btn-blue{ background: linear-gradient(135deg, #0d2d6b 0%, #1e4bb8 100%); }
+.btn-small{ padding:6px 10px; border-radius:8px; border:none; font-weight:800; font-size:11px; cursor:pointer; }
+.prod-item { border:2px solid #f1f5f9; padding:12px 14px; border-radius:14px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:#f8fafc; color:#000; }
+.prod-item.selected { background:#0d2d6b; color:white; border-color:#0d2d6b; }
+.tag { background:#c8102e; color:white; font-size:10px; padding:3px 8px; border-radius:100px; font-weight:800; }
+.tag-green { background:#16a34a; }.tag-orange { background:#f59e0b; }
+.mini-btn{ padding:7px 12px; border-radius:8px; border:none; font-weight:800; font-size:12px; cursor:pointer; margin-left:6px; text-decoration:none; display:inline-block; }
+.badge-pago{ background:#dcfce7; color:#166534; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
+.badge-pend{ background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
+.valor-card{ background:#f8fafc; padding:12px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-left:4px solid #0d2d6b; }
+.valor-card.mensal{ border-left-color:#c8102e; }
+.valor-actions{ display:flex; gap:4px; }
+.import-box{ background:#f8fafc; border:2px dashed #0d2d6b; padding:16px; border-radius:14px; margin-top:12px; }
     @media(max-width:768px){
-   .header { padding:10px 12px; }.header h1 { font-size:18px; }.hamburger { display:block; }
-   .nav { display:none; width:100%; flex-direction:column; background:#fff; border-radius:14px; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
-   .nav.show { display:flex; }.nav a { width:100%; text-align:center; padding:12px; }
-   .grid3 { grid-template-columns:1fr; }.container { margin:14px auto; padding:10px; }
+  .header { padding:10px 12px; }.header h1 { font-size:18px; }.hamburger { display:block; }
+  .nav { display:none; width:100%; flex-direction:column; background:#fff; border-radius:14px; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+  .nav.show { display:flex; }.nav a { width:100%; text-align:center; padding:12px; }
+  .grid3 { grid-template-columns:1fr; }.container { margin:14px auto; padding:10px; }
     }
 </style>
 </head>
@@ -344,8 +344,6 @@ def novo():
         data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
         dia_hoje = datetime.now().strftime("%d/%m/%Y")
         atendimentos_db.append({"id": len(atendimentos_db)+1,"cliente": cliente,"telefone": telefone,"servico": servico,"valor_servico": valor_servico,"produtos": ", ".join(prod_nomes),"total": total,"pagamento": pagamento,"data": data_hoje})
-
-        # ATUALIZA CONTROLE DE AVULSOS
         cli = next((x for x in clientes_avulso_db if x["nome"].lower()==cliente.lower()), None)
         if not cli:
             clientes_avulso_db.append({"id": next_id(clientes_avulso_db), "nome": cliente, "telefone": telefone, "primeira_visita": dia_hoje, "ultima_visita": dia_hoje, "visitas_mes": 1, "historico": [f"{dia_hoje} - {servico}"]})
@@ -354,9 +352,7 @@ def novo():
             cli["ultima_visita"]=dia_hoje
             cli["visitas_mes"]+=1
             cli["historico"].append(f"{dia_hoje} - {servico}")
-
         return redirect("/clientes")
-
     produtos_html = ""
     for p in produtos_db:
         produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small>R$ {p["preco"]:.2f}</small></div><div>OK</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
@@ -410,11 +406,32 @@ def mensalistas():
         badge = "<span class='badge-pago'>PAGO</span>" if m["status"]=="Pago" else "<span class='badge-pend'>PENDENTE</span>"
         hist = "<br>".join(m["historico"][-3:]) if m.get("historico") else "<small style='color:#94a3b8;'>Nenhum</small>"
         form_edit = f"""<form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:12px;"><input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{m['id']}"><div style="display:grid; grid-template-columns:2fr 1.5fr 1fr 1fr 1fr; gap:8px;"><input name="nome" value="{m['nome']}" required><input name="telefone" value="{m.get('telefone','')}" placeholder="Telefone"><select name="plano">{options_planos}</select><input name="valor" type="number" value="{m['valor']}"><input name="vencimento" type="number" value="{m['vencimento']}"></div><button class="mini-btn" style="background:#0d2d6b; color:white; margin-top:8px;">Salvar</button><a href="/mensalistas" class="mini-btn" style="background:#e2e8f0;">Cancelar</a></form>""" if edit_id==m["id"] else ""
-        lista+=f"""<div class="card" style="border-left:5px solid #0d2d6b;"><div style="display:flex; justify-content:space-between;"><div><b>{m['nome']}</b> - {m.get('telefone','')}<br><small>{m.get('plano','')} - R$ {m['valor']:.2f}</small></div><div>{badge}</div></div><div style="margin-top:8px; background:#f8fafc; padding:8px; border-radius:8px; font-size:12px;">{hist}</div>{form_edit}
-          <div style="margin-top:12px;"><form method="POST" style="display:inline;"><input type="hidden" name="acao" value="cortar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#0d2d6b; color:white;">Corte</button></form>
-          <form method="POST" style="display:inline;"><input type="hidden" name="acao" value="pagar"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#16a34a; color:white;">Pago</button></form>
-          <a href="/mensalistas?edit={m['id']}" class="mini-btn" style="background:#fef3c7;">Editar</a>
-          <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form></div></div>"""
+        # APENAS PARTE DIDATICA ALTERADA - LOGICA IGUAL
+        lista+=f"""
+        <div class="card" style="border-left:5px solid #0d2d6b;">
+          <div style="display:flex; justify-content:space-between; align-items:start;">
+            <div><b>{m['nome']}</b> - {m.get('telefone','')}<br><small>{m.get('plano','')} - R$ {m['valor']:.2f} | Venc dia {m['vencimento']}</small></div>
+            <div>{badge}<br><small style="font-size:10px; color:#64748b;">Ult pag: {m['ultimo_pag']}</small></div>
+          </div>
+          <div style="margin-top:8px; background:#f8fafc; padding:8px; border-radius:8px; font-size:12px;">
+            <b style="font-size:10px; color:#64748b;">HISTÓRICO:</b><br>{hist}
+          </div>
+          {form_edit}
+          <div style="margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div style="border:1.5px solid #0d2d6b; border-radius:10px; padding:8px; text-align:center;">
+              <small style="display:block; font-weight:800; font-size:10px; color:#0d2d6b; margin-bottom:4px;">✂️ CORTES: {m['cortes']}</small>
+              <form method="POST"><input type="hidden" name="acao" value="cortar"><input type="hidden" name="id" value="{m['id']}"><button class="btn btn-blue" style="margin:0; padding:10px; font-size:12px; width:100%;">+ REGISTRAR CORTE</button></form>
+            </div>
+            <div style="border:1.5px solid #16a34a; border-radius:10px; padding:8px; text-align:center;">
+              <small style="display:block; font-weight:800; font-size:10px; color:#16a34a; margin-bottom:4px;">💰 PAGAMENTO: {m['status']}</small>
+              <form method="POST"><input type="hidden" name="acao" value="pagar"><input type="hidden" name="id" value="{m['id']}"><button class="btn" style="margin:0; padding:10px; font-size:12px; width:100%; background:#16a34a;">MARCAR COMO PAGO</button></form>
+            </div>
+          </div>
+          <div style="margin-top:10px; text-align:right;">
+            <a href="/mensalistas?edit={m['id']}" class="mini-btn" style="background:#fef3c7;">Editar dados</a>
+            <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{m['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form>
+          </div>
+        </div>"""
     content=f"""<div class="card"><h2>Novo Mensalista</h2><form method="POST" style="display:grid; grid-template-columns:2fr 1.5fr 2fr 1fr 1fr 1fr; gap:10px; align-items:end;"><input type="hidden" name="acao" value="novo"><div><label>Nome</label><input name="nome" required></div><div><label>Telefone</label><input name="telefone" placeholder="(38) 9...." required></div><div><label>Plano</label><select name="plano" id="plano_mensal_select" onchange="atualizaPlanoMensal()">{options_planos}</select></div><div><label>Valor</label><input name="valor" id="valor_mensal_input" type="number" value="{planos_mensal[0]['valor'] if planos_mensal else 85}"></div><div><label>Venc.</label><input name="vencimento" type="number" value="10"></div><div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div></form></div>{lista}"""
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="mensal")
 
@@ -437,7 +454,6 @@ def clientes():
                 hoje=datetime.now().strftime("%d/%m/%Y")
                 c["ultima_visita"]=hoje; c["visitas_mes"]+=1; c["historico"].append(f"{hoje} - Visita avulsa")
         return redirect("/clientes")
-
     edit_id=request.args.get("edit", type=int)
     lista=""
     for c in reversed(clientes_avulso_db):
@@ -461,7 +477,6 @@ def clientes():
             <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{c['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form>
           </div>
         </div>"""
-
     content=f"""
     <div class="card">
       <h2>👥 Controle Avulso - Quem veio mais de 1x no mês</h2>
