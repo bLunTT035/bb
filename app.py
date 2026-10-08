@@ -344,6 +344,8 @@ def novo():
         data_hoje = datetime.now().strftime("%d/%m/%Y %H:%M")
         dia_hoje = datetime.now().strftime("%d/%m/%Y")
         atendimentos_db.append({"id": len(atendimentos_db)+1,"cliente": cliente,"telefone": telefone,"servico": servico,"valor_servico": valor_servico,"produtos": ", ".join(prod_nomes),"total": total,"pagamento": pagamento,"data": data_hoje})
+
+        # ATUALIZA CONTROLE DE AVULSOS
         cli = next((x for x in clientes_avulso_db if x["nome"].lower()==cliente.lower()), None)
         if not cli:
             clientes_avulso_db.append({"id": next_id(clientes_avulso_db), "nome": cliente, "telefone": telefone, "primeira_visita": dia_hoje, "ultima_visita": dia_hoje, "visitas_mes": 1, "historico": [f"{dia_hoje} - {servico}"]})
@@ -352,7 +354,9 @@ def novo():
             cli["ultima_visita"]=dia_hoje
             cli["visitas_mes"]+=1
             cli["historico"].append(f"{dia_hoje} - {servico}")
+
         return redirect("/clientes")
+
     produtos_html = ""
     for p in produtos_db:
         produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small>R$ {p["preco"]:.2f}</small></div><div>OK</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
@@ -406,7 +410,7 @@ def mensalistas():
         badge = "<span class='badge-pago'>PAGO</span>" if m["status"]=="Pago" else "<span class='badge-pend'>PENDENTE</span>"
         hist = "<br>".join(m["historico"][-3:]) if m.get("historico") else "<small style='color:#94a3b8;'>Nenhum</small>"
         form_edit = f"""<form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:12px;"><input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{m['id']}"><div style="display:grid; grid-template-columns:2fr 1.5fr 1fr 1fr 1fr; gap:8px;"><input name="nome" value="{m['nome']}" required><input name="telefone" value="{m.get('telefone','')}" placeholder="Telefone"><select name="plano">{options_planos}</select><input name="valor" type="number" value="{m['valor']}"><input name="vencimento" type="number" value="{m['vencimento']}"></div><button class="mini-btn" style="background:#0d2d6b; color:white; margin-top:8px;">Salvar</button><a href="/mensalistas" class="mini-btn" style="background:#e2e8f0;">Cancelar</a></form>""" if edit_id==m["id"] else ""
-        # APENAS PARTE DIDATICA ALTERADA - LOGICA IGUAL
+        # APENAS ESSA PARTE FOI DEIXADA MAIS DIDATICA - MESMA LOGICA, VISUAL MELHOR
         lista+=f"""
         <div class="card" style="border-left:5px solid #0d2d6b;">
           <div style="display:flex; justify-content:space-between; align-items:start;">
@@ -454,6 +458,7 @@ def clientes():
                 hoje=datetime.now().strftime("%d/%m/%Y")
                 c["ultima_visita"]=hoje; c["visitas_mes"]+=1; c["historico"].append(f"{hoje} - Visita avulsa")
         return redirect("/clientes")
+
     edit_id=request.args.get("edit", type=int)
     lista=""
     for c in reversed(clientes_avulso_db):
@@ -477,6 +482,7 @@ def clientes():
             <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{c['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form>
           </div>
         </div>"""
+
     content=f"""
     <div class="card">
       <h2>👥 Controle Avulso - Quem veio mais de 1x no mês</h2>
