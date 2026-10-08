@@ -15,9 +15,20 @@ produtos_db = [
     {"id": 6, "nome": "Balm Pós-Barba", "categoria": "Balm", "preco": 32.00},
 ]
 atendimentos_db = []
+
+# VALORES ATUALIZADOS CONFORME SUA IMAGEM - PLANO MENSAL
+planos_mensal = [
+    ("CORTE", 85),
+    ("BARBA", 85),
+    ("CORTE + SOBRANCELHA", 90),
+    ("CORTE + BARBA E SOBRANCELHA", 125),
+]
+
+# Serviços avulsos continuam igual
 servicos = ["Corte Simples - R$ 35", "Barba - R$ 30", "Corte + Barba - R$ 60", "Pezinho - R$ 15", "Sobrancelha - R$ 10"]
+
 mensalistas_db = [
-    {"id": 1, "nome": "João Silva", "valor": 80.0, "vencimento": 10, "status": "Pendente", "cortes": 2, "ultimo_pag": "01/10/2026", "historico": ["02/10 - Corte", "15/10 - Corte"]},
+    {"id": 1, "nome": "João Silva", "plano": "CORTE + BARBA E SOBRANCELHA", "valor": 125.0, "vencimento": 10, "status": "Pendente", "cortes": 2, "ultimo_pag": "01/10/2026", "historico": ["02/10 - Corte", "15/10 - Corte"]},
 ]
 
 def next_id(lista):
@@ -61,8 +72,6 @@ HTML_BASE = """
     .badge-pago{ background:#dcfce7; color:#166534; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
     .badge-pend{ background:#fee2e2; color:#991b1b; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:900; }
     .import-box{ background:#f8fafc; border:2px dashed #0d2d6b; padding:16px; border-radius:14px; margin-top:12px; }
-
-    /* CORREÇÃO MOBILE - era isso que embolava */
     @media(max-width:768px){
       .header { padding:10px 12px; }
       .header h1 { font-size:18px; }
@@ -93,12 +102,8 @@ HTML_BASE = """
 <script>
 function toggleMenu(){ document.getElementById('navMenu').classList.toggle('show'); }
 function toggleProd(id){const el=document.getElementById('p-'+id); const inp=document.getElementById('produtos_input'); let s=inp.value?inp.value.split(',').filter(x=>x):[]; if(el.classList.contains('selected')){el.classList.remove('selected'); s=s.filter(x=>x!=id);}else{el.classList.add('selected'); s.push(id);} inp.value=s.join(','); calcTotal();}
-function atualizaServico(){
-  const sel=document.getElementById('servico_select');
-  const preco=parseFloat(sel.options[sel.selectedIndex].dataset.preco)||0;
-  document.getElementById('valor_servico').value=preco;
-  calcTotal();
-}
+function atualizaServico(){ const sel=document.getElementById('servico_select'); const preco=parseFloat(sel.options[sel.selectedIndex].dataset.preco)||0; document.getElementById('valor_servico').value=preco; calcTotal(); }
+function atualizaPlanoMensal(){ const sel=document.getElementById('plano_mensal_select'); const preco=sel.options[sel.selectedIndex].dataset.preco; document.getElementById('valor_mensal_input').value=preco; }
 function calcTotal(){const v=parseFloat(document.getElementById('valor_servico').value)||0; let totP=0; (document.getElementById('produtos_input').value.split(',').filter(x=>x)).forEach(id=>{const p=document.getElementById('preco-'+id); if(p) totP+=parseFloat(p.value);}); const t=v+totP; document.getElementById('total_auto').value=t.toFixed(2); document.getElementById('total_view').innerText='R$ '+t.toFixed(2);}
 </script>
 </body>
@@ -117,8 +122,13 @@ def index():
       <div class="stat"><b>Mensalistas ({pend} pend.)</b><h3>R$ {total_mensal:.2f}</h3></div>
     </div>
     <div class="card">
-      <h2>👑 Rei da Navalha PRO</h2>
-      <p style="color:#000; font-weight:700;">Com edicao e exclusao!</p>
+      <h2>👑 Plano Mensal - Valores Oficiais</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px;">
+        <div style="background:#f8fafc; padding:12px; border-radius:12px; border-left:4px solid #c8102e;"><b>CORTE</b><br><span style="color:#c8102e; font-weight:900;">R$ 85</span></div>
+        <div style="background:#f8fafc; padding:12px; border-radius:12px; border-left:4px solid #c8102e;"><b>BARBA</b><br><span style="color:#c8102e; font-weight:900;">R$ 85</span></div>
+        <div style="background:#f8fafc; padding:12px; border-radius:12px; border-left:4px solid #0d2d6b;"><b>CORTE + SOBRANCELHA</b><br><span style="color:#0d2d6b; font-weight:900;">R$ 90</span></div>
+        <div style="background:#f8fafc; padding:12px; border-radius:12px; border-left:4px solid #0d2d6b;"><b>CORTE + BARBA E SOBRANCELHA</b><br><span style="color:#0d2d6b; font-weight:900;">R$ 125</span></div>
+      </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px;">
         <a href="/novo"><button class="btn btn-blue">+ Novo Atendimento</button></a>
         <a href="/mensalistas"><button class="btn">Mensalistas</button></a>
@@ -134,7 +144,12 @@ def mensalistas():
         acao = request.form.get("acao")
         mid = request.form.get("id")
         if acao=="novo":
-            mensalistas_db.append({"id": next_id(mensalistas_db),"nome": request.form.get("nome"),"valor": float(request.form.get("valor") or 80),"vencimento": int(request.form.get("vencimento") or 10),"status": "Pendente","cortes": 0,"ultimo_pag": "-","historico": []})
+            plano_nome = request.form.get("plano")
+            # busca valor do plano selecionado
+            valor_plano = next((v for n,v in planos_mensal if n==plano_nome), 80)
+            try: valor_plano = float(request.form.get("valor") or valor_plano)
+            except: pass
+            mensalistas_db.append({"id": next_id(mensalistas_db),"nome": request.form.get("nome"),"plano": plano_nome, "valor": float(valor_plano),"vencimento": int(request.form.get("vencimento") or 10),"status": "Pendente","cortes": 0,"ultimo_pag": "-","historico": []})
         elif acao=="pagar" and mid:
             m=next((x for x in mensalistas_db if str(x["id"])==str(mid)),None)
             if m: m["status"]="Pago"; m["ultimo_pag"]=datetime.now().strftime("%d/%m/%Y")
@@ -150,22 +165,29 @@ def mensalistas():
             m=next((x for x in mensalistas_db if str(x["id"])==str(mid)),None)
             if m:
                 m["nome"]=request.form.get("nome")
+                m["plano"]=request.form.get("plano")
                 m["valor"]=float(request.form.get("valor"))
                 m["vencimento"]=int(request.form.get("vencimento"))
         return redirect("/mensalistas")
 
     edit_id = request.args.get("edit", type=int)
+    
+    # opções de planos para o select
+    options_planos = "".join([f'<option value="{n}" data-preco="{v}" {"selected" if edit_id and next((x for x in mensalistas_db if x["id"]==edit_id), {}).get("plano")==n else ""}>{n} - R$ {v}</option>' for n,v in planos_mensal])
+    options_planos_novo = "".join([f'<option value="{n}" data-preco="{v}">{n} - R$ {v}</option>' for n,v in planos_mensal])
+
     lista=""
     for m in reversed(mensalistas_db):
         badge = "<span class='badge-pago'>PAGO</span>" if m["status"]=="Pago" else "<span class='badge-pend'>PENDENTE</span>"
-        hist = "<br>".join(m["historico"][-3:]) if m["historico"] else "<small style='color:#94a3b8;'>Nenhum corte</small>"
+        hist = "<br>".join(m["historico"][-3:]) if m.get("historico") else "<small style='color:#94a3b8;'>Nenhum corte</small>"
         form_edit = ""
         if edit_id==m["id"]:
             form_edit = f"""
             <form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:12px;">
               <input type="hidden" name="acao" value="editar"><input type="hidden" name="id" value="{m['id']}">
-              <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:8px;">
+              <div style="display:grid; grid-template-columns:2fr 1.5fr 1fr 1fr; gap:8px;">
                 <input name="nome" value="{m['nome']}" required>
+                <select name="plano">{options_planos}</select>
                 <input name="valor" type="number" value="{m['valor']}">
                 <input name="vencimento" type="number" value="{m['vencimento']}">
               </div>
@@ -175,7 +197,7 @@ def mensalistas():
             """
         lista+=f"""
         <div class="card" style="border-left:5px solid #0d2d6b;">
-          <div style="display:flex; justify-content:space-between;"><div><b style="color:#000;">{m['nome']}</b><br><small>Venc dia {m['vencimento']} - R$ {m['valor']:.2f} - {m['cortes']} cortes</small></div><div>{badge}</div></div>
+          <div style="display:flex; justify-content:space-between;"><div><b style="color:#000;">{m['nome']}</b><br><small>{m.get('plano','')} - Venc dia {m['vencimento']} - R$ {m['valor']:.2f} - {m['cortes']} cortes</small></div><div>{badge}</div></div>
           <div style="margin-top:10px; background:#f8fafc; padding:8px; border-radius:8px; font-size:12px;">{hist}</div>
           {form_edit}
           <div style="margin-top:12px;">
@@ -188,11 +210,12 @@ def mensalistas():
         """
     content=f"""
     <div class="card">
-      <h2>Novo Mensalista</h2>
-      <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
+      <h2>Novo Mensalista - Plano Mensal Oficial</h2>
+      <form method="POST" style="display:grid; grid-template-columns:2fr 2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
-        <div><label>Nome</label><input name="nome" required></div>
-        <div><label>Valor</label><input name="valor" type="number" value="80"></div>
+        <div><label>Nome</label><input name="nome" required placeholder="Nome do cliente"></div>
+        <div><label>Plano</label><select name="plano" id="plano_mensal_select" onchange="atualizaPlanoMensal()">{options_planos_novo}</select></div>
+        <div><label>Valor</label><input name="valor" id="valor_mensal_input" type="number" value="85"></div>
         <div><label>Venc.</label><input name="vencimento" type="number" value="10"></div>
         <div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div>
       </form>
@@ -226,24 +249,15 @@ def produtos():
                     for _, row in df.iterrows():
                         nome = str(row[col_nome]).strip() if col_nome and str(row[col_nome])!='nan' else ""
                         if not nome or nome.lower() in ['nan','none','']: continue
-                        if any(p['nome'].lower()==nome.lower() for p in produtos_db): 
-                            p_ex = next(p for p in produtos_db if p['nome'].lower()==nome.lower())
-                            try:
-                                if col_preco:
-                                    pr = float(row[col_preco])
-                                    if pr>0: p_ex['preco']=pr
-                            except: pass
-                            continue
-                        try:
-                            preco = float(row[col_preco]) if col_preco else 0.0
-                        except:
-                            preco = 0.0
+                        if any(p['nome'].lower()==nome.lower() for p in produtos_db): continue
+                        try: preco = float(row[col_preco]) if col_preco else 0.0
+                        except: preco = 0.0
                         cat = str(row[col_cat]).strip() if col_cat and str(row[col_cat])!='nan' else "Geral"
                         if not cat or cat.lower()=='nan': cat="Geral"
                         if preco<=0: continue
                         produtos_db.append({"id": next_id(produtos_db), "nome": nome, "categoria": cat, "preco": preco})
                         count+=1
-                    msg = f"<div style='background:#dcfce7; color:#166534; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>✅ {count} produtos importados com sucesso! {len(df)} linhas lidas.</div>"
+                    msg = f"<div style='background:#dcfce7; color:#166534; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>✅ {count} produtos importados!</div>"
                 except ImportError:
                     import openpyxl
                     wb = openpyxl.load_workbook(file)
@@ -262,17 +276,15 @@ def produtos():
                         nome = str(ws.cell(r, (i_nome+1) if i_nome is not None else 1).value or "").strip()
                         if not nome or nome.lower()=='none': continue
                         if any(p['nome'].lower()==nome.lower() for p in produtos_db): continue
-                        try:
-                            preco = float(ws.cell(r, (i_preco+1) if i_preco is not None else 2).value or 0)
+                        try: preco = float(ws.cell(r, (i_preco+1) if i_preco is not None else 2).value or 0)
                         except: preco=0
                         if preco<=0: continue
                         cat = str(ws.cell(r, (i_cat+1) if i_cat is not None else 3).value or "Geral").strip()
-                        if not cat or cat.lower()=='none': cat="Geral"
                         produtos_db.append({"id": next_id(produtos_db), "nome": nome, "categoria": cat, "preco": preco})
                         count+=1
                     msg = f"<div style='background:#dcfce7; color:#166534; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>✅ {count} produtos importados!</div>"
             except Exception as e:
-                msg = f"<div style='background:#fee2e2; color:#991b1b; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>❌ Erro ao importar: {e}</div>"
+                msg = f"<div style='background:#fee2e2; color:#991b1b; padding:12px; border-radius:10px; margin-bottom:12px; font-weight:800;'>❌ Erro: {e}</div>"
         else:
             acao=request.form.get("acao")
             mid=request.form.get("id")
@@ -302,8 +314,7 @@ def produtos():
             <td style='padding:12px; border-bottom:1px solid #e2e8f0; font-weight:900;'>R$ {p['preco']:.2f}</td>
             <td style='padding:12px; border-bottom:1px solid #e2e8f0; text-align:right;'><a href="/produtos?edit={p['id']}" class="mini-btn" style="background:#fef3c7;">Editar</a>
             <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{p['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form></td></tr>"""
-    content = f"""
-    {msg}
+    content = f"""{msg}
     <div class="card">
       <h2>Novo Produto</h2>
       <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; align-items:end;">
@@ -313,14 +324,6 @@ def produtos():
         <div><label>Preco</label><input name="preco" type="number" step="0.01" required></div>
         <div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div>
       </form>
-      <div class="import-box">
-        <h3 style="margin:0 0 8px 0; font-size:14px; font-weight:900; color:#0d2d6b;">📥 Importar Planilha (Excel)</h3>
-        <p style="margin:0 0 10px 0; font-size:12px; color:#64748b;">Aceita .xlsx com colunas PRODUTO / VALOR REVENDA / CATEGORIA</p>
-        <form method="POST" enctype="multipart/form-data" style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:end;">
-          <div><input type="file" name="arquivo" accept=".xlsx,.xls,.csv" required style="background:white;"></div>
-          <div><button class="btn btn-blue" style="margin:0; padding:12px 20px;">IMPORTAR</button></div>
-        </form>
-      </div>
     </div>
     <div class="card">
       <h2>Produtos ({len(produtos_db)})</h2>
@@ -352,22 +355,19 @@ def novo():
     produtos_html = ""
     for p in produtos_db:
         produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small>R$ {p["preco"]:.2f}</small></div><div>OK</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
-
-    # CORREÇÃO DO VALOR: agora extrai o preço do texto e coloca data-preco
     servicos_opt = ""
     for s in servicos:
         m = re.search(r'R\$\s*([0-9]+)', s)
         preco = m.group(1) if m else "0"
         servicos_opt += f'<option value="{s}" data-preco="{preco}">{s}</option>'
-
     content = f"""
     <div class="card">
       <h2>Novo Atendimento</h2>
       <form method="POST">
         <label>Cliente *</label><input name="cliente" required>
-        <label>Pagamento</label><select name="pagamento"><option>Dinheiro</option><option>Pix</option><option>Cartao</option></select>
+        <label>Pagamento</label><select name="pagamento"><option>Dinheiro</option><option>Pix</option><option>Cartao</option><option>Mensalista</option></select>
         <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px;">
-          <div><label>Servico</label><select name="servico" id="servico_select" onchange="atualizaServico()">{servicos_opt}</select></div>
+          <div><label>Servico Avulso</label><select name="servico" id="servico_select" onchange="atualizaServico()">{servicos_opt}</select></div>
           <div><label>Valor</label><input id="valor_servico" name="valor_servico" type="number" value="35" oninput="calcTotal()"></div>
           <div><label>Total</label><input id="total_auto" name="total_auto" readonly style="font-weight:900; background:#fef3c7;" value="35.00"><small id="total_view" style="color:#c8102e; font-weight:900;">R$ 35.00</small></div>
         </div>
