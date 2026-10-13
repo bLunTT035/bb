@@ -1,6 +1,6 @@
 from flask import Flask, render_template_string, request, redirect
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 
 app = Flask(__name__)
@@ -14,6 +14,7 @@ produtos_db = [
     {"id": 6, "nome": "Balm Pós-Barba", "categoria": "Balm", "preco": 32.00},
 ]
 atendimentos_db = []
+despesas_db = [] # NOVO
 
 planos_mensal = [
     {"id": 1, "nome": "CORTE", "valor": 85},
@@ -30,16 +31,22 @@ servicos_avulso = [
     {"id": 5, "nome": "Sobrancelha", "valor": 10},
 ]
 
-# ADICIONADO TELEFONE
 mensalistas_db = [
     {"id": 1, "nome": "João Silva", "telefone": "(38) 99999-0000", "plano": "CORTE + BARBA E SOBRANCELHA", "valor": 125.0, "vencimento": 10, "status": "Pendente", "cortes": 2, "ultimo_pag": "01/10/2026", "historico": ["02/10 - Corte"]},
 ]
-
-# NOVO - CONTROLE DE CLIENTES AVULSOS QUE VOLTARAM
 clientes_avulso_db = []
 
 def next_id(lista):
     return max([x["id"] for x in lista], default=0) + 1
+
+def parse_data_br(data_str):
+    try:
+        return datetime.strptime(data_str.split()[0], "%d/%m/%Y")
+    except:
+        try:
+            return datetime.strptime(data_str, "%d/%m/%Y")
+        except:
+            return datetime.now()
 
 HTML_BASE = """
 <!DOCTYPE html>
@@ -64,6 +71,7 @@ HTML_BASE = """
 .card::before{content:''; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg, #0d2d6b, #c8102e);}
 .card h2 { color:#000!important; margin-top:0; font-weight:900; font-size:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
 .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
+.grid4{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; margin-bottom:22px; }
 .stat { background:#fff; padding:18px; border-radius:18px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.2); }
 .stat b{ display:block; font-size:11px; text-transform:uppercase; color:#64748b; margin-bottom:6px; }
 .stat h3{ margin:0; font-size:26px; font-weight:900; }
@@ -84,10 +92,10 @@ HTML_BASE = """
 .valor-actions{ display:flex; gap:4px; }
 .import-box{ background:#f8fafc; border:2px dashed #0d2d6b; padding:16px; border-radius:14px; margin-top:12px; }
     @media(max-width:768px){
-  .header { padding:10px 12px; }.header h1 { font-size:18px; }.hamburger { display:block; }
-  .nav { display:none; width:100%; flex-direction:column; background:#fff; border-radius:14px; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
-  .nav.show { display:flex; }.nav a { width:100%; text-align:center; padding:12px; }
-  .grid3 { grid-template-columns:1fr; }.container { margin:14px auto; padding:10px; }
+ .header { padding:10px 12px; }.header h1 { font-size:18px; }.hamburger { display:block; }
+ .nav { display:none; width:100%; flex-direction:column; background:#fff; border-radius:14px; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+ .nav.show { display:flex; }.nav a { width:100%; text-align:center; padding:12px; }
+ .grid3 { grid-template-columns:1fr; }.grid4 { grid-template-columns:1fr 1fr; }.container { margin:14px auto; padding:10px; }
     }
 </style>
 </head>
@@ -100,6 +108,7 @@ HTML_BASE = """
     <a href="/mensalistas" class="{{'active' if active=='mensal' else ''}}">💳 Mensalistas</a>
     <a href="/clientes" class="{{'active' if active=='clientes' else ''}}">👥 Avulsos</a>
     <a href="/produtos" class="{{'active' if active=='prod' else ''}}">Produtos</a>
+    <a href="/despesas" class="{{'active' if active=='desp' else ''}}">💸 Despesas</a>
     <a href="/historico" class="{{'active' if active=='hist' else ''}}">Histórico</a>
     <a href="/novo" class="cta">+ Novo</a>
   </div>
@@ -139,9 +148,24 @@ def index():
             pid=int(request.form.get("id")); servicos_avulso=[x for x in servicos_avulso if x["id"]!=pid]
         return redirect("/")
 
+    # CALCULOS NOVOS - GANHO HOJE / SEMANA
+    hoje_str = datetime.now().strftime("%d/%m/%Y")
+    total_hoje = sum(a['total'] for a in atendimentos_db if hoje_str in a['data'])
+    inicio_semana = datetime.now() - timedelta(days=datetime.now().weekday())
+    total_semana = 0
+    for a in atendimentos_db:
+        try:
+            d = parse_data_br(a['data'])
+            if d >= inicio_semana:
+                total_semana += a['total']
+        except: pass
+
     total_vendas = sum(a['total'] for a in atendimentos_db)
-    total_mensal = sum(m['valor'] for m in mensalistas_db if m['status']=='Pago')
+    total_mensal_recebido = sum(m['valor'] for m in mensalistas_db if m['status']=='Pago')
+    total_despesas_mes = sum(d['valor'] for d in despesas_db)
+    lucro = (total_vendas + total_mensal_recebido) - total_despesas_mes
     pend = len([m for m in mensalistas_db if m['status']=='Pendente'])
+
     edit_tipo = request.args.get("edit_tipo")
     edit_id = request.args.get("edit_id", type=int)
 
@@ -172,10 +196,16 @@ def index():
               <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir_avulso"><input type="hidden" name="id" value="{s['id']}"><button class="btn-small" style="background:#fee2e2; color:#991b1b;">X</button></form></div></div>"""
 
     content = f"""
+    <div class="grid4">
+      <div class="stat" style="border-top:4px solid #16a34a;"><b>Hoje ({hoje_str})</b><h3 style="color:#16a34a;">R$ {total_hoje:.2f}</h3></div>
+      <div class="stat" style="border-top:4px solid #0d2d6b;"><b>Essa Semana</b><h3 style="color:#0d2d6b;">R$ {total_semana:.2f}</h3></div>
+      <div class="stat" style="border-top:4px solid #c8102e;"><b>Despesas Mês</b><h3 style="color:#c8102e;">R$ {total_despesas_mes:.2f}</h3></div>
+      <div class="stat" style="border-top:4px solid #000;"><b>Lucro Líquido</b><h3 style="color:{'#16a34a' if lucro>=0 else '#c8102e'};">R$ {lucro:.2f}</h3></div>
+    </div>
     <div class="grid3">
       <div class="stat"><b>Atendimentos</b><h3 style="color:#c8102e;">{len(atendimentos_db)}</h3></div>
       <div class="stat"><b>Faturamento Avulso</b><h3 style="color:#0d2d6b;">R$ {total_vendas:.2f}</h3></div>
-      <div class="stat"><b>Mensalistas ({pend} pend.)</b><h3>R$ {total_mensal:.2f}</h3></div>
+      <div class="stat"><b>Mensalistas ({pend} pend.)</b><h3>R$ {total_mensal_recebido:.2f}</h3></div>
     </div>
     <div class="card">
       <h2>👑 Plano Mensal <button onclick="document.getElementById('form-plano').style.display='block'" class="btn-small" style="background:#c8102e; color:white;">+ Add</button></h2>
@@ -196,13 +226,53 @@ def index():
         </form>
       </div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">{html_avulso}</div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:18px;">
         <a href="/novo"><button class="btn btn-blue">+ Novo Atendimento</button></a>
-        <a href="/clientes"><button class="btn">👥 Ver Avulsos Frequentes</button></a>
+        <a href="/despesas"><button class="btn" style="background:#111;">💸 Lançar Despesa</button></a>
+        <a href="/clientes"><button class="btn">👥 Ver Avulsos</button></a>
       </div>
     </div>
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="inicio")
+
+# --- NOVA ROTA DESPESAS ---
+@app.route("/despesas", methods=["GET","POST"])
+def despesas_route():
+    global despesas_db
+    if request.method=="POST":
+        acao=request.form.get("acao")
+        if acao=="novo":
+            despesas_db.append({"id": next_id(despesas_db),"nome": request.form.get("nome"),"categoria": request.form.get("categoria"),"valor": float(request.form.get("valor") or 0),"data": request.form.get("data") or datetime.now().strftime("%d/%m/%Y")})
+        elif acao=="excluir":
+            mid=request.form.get("id")
+            despesas_db=[x for x in despesas_db if str(x["id"])!=str(mid)]
+        return redirect("/despesas")
+
+    total = sum(d["valor"] for d in despesas_db)
+    rows=""
+    for d in reversed(despesas_db):
+        rows+=f"<tr style='color:#000;'><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{d['data']}</td><td><span class='tag'>{d['categoria']}</span> {d['nome']}</td><td style='font-weight:900; color:#c8102e;'>R$ {d['valor']:.2f}</td><td><form method='POST' style='display:inline;'><input type='hidden' name='acao' value='excluir'><input type='hidden' name='id' value='{d['id']}'><button class='mini-btn' style='background:#fee2e2;'>X</button></form></td></tr>"
+
+    content=f"""
+    <div class="card">
+      <h2>💸 Nova Despesa - Campo que você pediu</h2>
+      <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:10px; align-items:end;">
+        <input type="hidden" name="acao" value="novo">
+        <div><label>O que gastou?</label><input name="nome" placeholder="Ex: Aluguel, Lâmina, Luz" required></div>
+        <div><label>Categoria</label><select name="categoria"><option>Aluguel</option><option>Produto</option><option>Luz/Água</option><option>Outros</option></select></div>
+        <div><label>Valor</label><input name="valor" type="number" step="0.01" required></div>
+        <div><label>Data</label><input name="data" type="text" value="{datetime.now().strftime('%d/%m/%Y')}"></div>
+        <div><button class="btn btn-blue" style="margin:0;">Add</button></div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Despesas do Mês: R$ {total:.2f}</h2>
+      <table style="width:100%; border-collapse:collapse;"><tr style="background:#111; color:white;"><th style="padding:10px;">Data</th><th>Despesa</th><th>Valor</th><th></th></tr>{rows if rows else "<tr><td colspan=4 style='padding:20px; text-align:center;'>Nenhuma despesa lançada</td></tr>"}</table>
+    </div>
+    """
+    return render_template_string(HTML_BASE.replace("{{content}}", content), active="desp")
+
+#... (mantenha o resto do seu código de /produtos, /novo, /mensalistas, /clientes, /historico igual)...
 
 @app.route("/produtos", methods=["GET","POST"])
 def produtos_route():
@@ -305,14 +375,6 @@ def produtos_route():
         <div><label>Preco</label><input name="preco" type="number" step="0.01" required></div>
         <div><button class="btn btn-blue" style="margin-top:6px;">Add</button></div>
       </form>
-      <div class="import-box">
-        <h3 style="margin:0 0 8px 0; font-size:14px; font-weight:900; color:#0d2d6b;">📥 Importar Planilha (Excel)</h3>
-        <p style="margin:0 0 10px 0; font-size:12px; color:#64748b;">Aceita.xlsx com colunas PRODUTO / VALOR REVENDA / CATEGORIA</p>
-        <form method="POST" enctype="multipart/form-data" style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:end;">
-          <div><input type="file" name="arquivo" accept=".xlsx,.xls,.csv" required style="background:white;"></div>
-          <div><button class="btn btn-blue" style="margin:0; padding:12px 20px;">IMPORTAR</button></div>
-        </form>
-      </div>
     </div>
     <div class="card">
       <h2>Produtos ({len(produtos_db)})</h2>
@@ -358,7 +420,7 @@ def novo():
         produtos_html += f'<div class="prod-item" id="p-{p["id"]}" onclick="toggleProd({p["id"]})"><div><span class="tag">{p["categoria"]}</span> <b style="margin-left:6px;">{p["nome"]}</b><br><small>R$ {p["preco"]:.2f}</small></div><div>OK</div><input type="hidden" id="preco-{p["id"]}" value="{p["preco"]}"></div>'
     servicos_opt = "".join([f'<option value="{s["nome"]}" data-preco="{s["valor"]}">{s["nome"]} - R$ {s["valor"]:.0f}</option>' for s in servicos_avulso])
     content = f"""
-    <div class="card"><h2>Novo Atendimento - Com Telefone</h2>
+    <div class="card"><h2>Novo Atendimento</h2>
       <form method="POST">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
           <div><label>Cliente *</label><input name="cliente" required></div>
@@ -458,13 +520,26 @@ def clientes():
         return redirect("/clientes")
 
     edit_id=request.args.get("edit", type=int)
-    # opções de serviço vindas da sua lista de Avulso
     options_servicos = "".join([f'<option value="{s["nome"]}">{s["nome"]} - R$ {s["valor"]:.0f}</option>' for s in servicos_avulso])
 
     lista=""
     for c in reversed(clientes_avulso_db):
-        tag = f'<span class="tag tag-green">{c["visitas_mes"]}x no mês</span>' if c["visitas_mes"]>=2 else f'<span class="tag">{c["visitas_mes"]}x</span>'
-        alerta = '<span class="tag tag-orange">🔥 Virar mensalista?</span>' if c["visitas_mes"]>=2 else ''
+        try:
+            ultima_data = parse_data_br(c["ultima_visita"])
+            dias_sumido = (datetime.now() - ultima_data).days
+        except: dias_sumido = 0
+
+        if dias_sumido >= 30:
+            tag = f'<span class="tag" style="background:#991b1b;">SUMIDO {dias_sumido} DIAS</span>'
+        elif c["visitas_mes"]>=2:
+            tag = f'<span class="tag tag-green">{c["visitas_mes"]}x no mês</span>'
+        else:
+            tag = f'<span class="tag">{c["visitas_mes"]}x</span>'
+
+        alerta = '<span class="tag tag-orange">🔥 Virar mensalista?</span>' if c["visitas_mes"]>=3 else ''
+        if dias_sumido>=30:
+            alerta+= f' <span class="tag" style="background:#fee2e2; color:#991b1b;">📞 LIGAR!</span>'
+
         hist="<br>".join(c["historico"][-5:])
         form_edit=f"""
         <form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:10px; display:grid; grid-template-columns:1fr 1fr 1fr 1fr 0.5fr; gap:6px;">
@@ -473,9 +548,9 @@ def clientes():
           <div style="grid-column:1/-1;"><button class="mini-btn" style="background:#0d2d6b; color:white;">Salvar</button><a href="/clientes" class="mini-btn" style="background:#e2e8f0;">Cancelar</a></div>
         </form>""" if edit_id==c["id"] else ""
         lista+=f"""
-        <div class="card" style="border-left:5px solid #0d2d6b;">
-          <div style="display:flex; justify-content:space-between;"><div><b>{c['nome']}</b> - {c['telefone']}<br><small>Veio: {c['primeira_visita']} | Voltou: {c['ultima_visita']}</small></div><div>{tag} {alerta}</div></div>
-          <div style="margin-top:8px; background:#f8fafc; padding:10px; border-radius:10px; font-size:12px; border:1px solid #e2e8f0;"><b style="font-size:10px; color:#0d2d6b;">HISTÓRICO DE CORTES:</b><br>{hist}</div>
+        <div class="card" style="border-left:5px solid {'#991b1b' if dias_sumido>=30 else '#0d2d6b'};">
+          <div style="display:flex; justify-content:space-between;"><div><b>{c['nome']}</b> - {c['telefone']}<br><small>Veio: {c['primeira_visita']} | Voltou: {c['ultima_visita']} ({dias_sumido} dias atrás)</small></div><div>{tag} {alerta}</div></div>
+          <div style="margin-top:8px; background:#f8fafc; padding:10px; border-radius:10px; font-size:12px; border:1px solid #e2e8f0;"><b style="font-size:10px; color:#0d2d6b;">HISTÓRICO:</b><br>{hist}</div>
           {form_edit}
           <div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:#f1f5f9; padding:10px; border-radius:10px;">
             <form method="POST" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -490,7 +565,7 @@ def clientes():
 
     content=f"""
     <div class="card">
-      <h2>👥 Controle Avulso - Quem veio mais de 1x no mês</h2>
+      <h2>👥 Controle Avulso - Quem veio mais de 1x</h2>
       <form method="POST" style="display:grid; grid-template-columns:1.2fr 1fr 0.8fr 0.8fr 1.2fr 0.4fr 0.8fr; gap:8px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
         <div><label>Nome</label><input name="nome" required></div>
@@ -499,10 +574,10 @@ def clientes():
         <div><label>Dia Voltou</label><input name="ultima" value="{datetime.now().strftime('%d/%m/%Y')}"></div>
         <div><label>Qual Corte?</label><select name="servico" style="margin-top:6px;">{options_servicos}</select></div>
         <div><label>Qtd</label><input name="visitas" type="number" value="1"></div>
-        <div><button class="btn btn-blue">Add Cliente</button></div>
+        <div><button class="btn btn-blue">Add</button></div>
       </form>
     </div>
-    {lista if lista else "<div class='card'><p>Nenhum cliente avulso ainda. Quando você lançar um atendimento no + Novo, ele já cria aqui automaticamente com o tipo de corte.</p></div>"}
+    {lista if lista else "<div class='card'><p>Nenhum cliente avulso ainda.</p></div>"}
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="clientes")
 
