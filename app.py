@@ -14,7 +14,7 @@ produtos_db = [
     {"id": 6, "nome": "Balm Pós-Barba", "categoria": "Balm", "preco": 32.00},
 ]
 atendimentos_db = []
-despesas_db = [] # NOVO
+despesas_db = []
 
 planos_mensal = [
     {"id": 1, "nome": "CORTE", "valor": 85},
@@ -52,7 +52,7 @@ HTML_BASE = """
 <!DOCTYPE html>
 <html>
 <head>
-<title>Rei da Navalha - PRO</title>
+<title>Barbearia - PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
@@ -92,16 +92,16 @@ HTML_BASE = """
 .valor-actions{ display:flex; gap:4px; }
 .import-box{ background:#f8fafc; border:2px dashed #0d2d6b; padding:16px; border-radius:14px; margin-top:12px; }
     @media(max-width:768px){
- .header { padding:10px 12px; }.header h1 { font-size:18px; }.hamburger { display:block; }
- .nav { display:none; width:100%; flex-direction:column; background:#fff; border-radius:14px; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
- .nav.show { display:flex; }.nav a { width:100%; text-align:center; padding:12px; }
- .grid3 { grid-template-columns:1fr; }.grid4 { grid-template-columns:1fr 1fr; }.container { margin:14px auto; padding:10px; }
+.header { padding:10px 12px; }.header h1 { font-size:18px; }.hamburger { display:block; }
+.nav { display:none; width:100%; flex-direction:column; background:#fff; border-radius:14px; padding:10px; box-shadow:0 8px 20px rgba(0,0,0,0.15); }
+.nav.show { display:flex; }.nav a { width:100%; text-align:center; padding:12px; }
+.grid3 { grid-template-columns:1fr; }.grid4 { grid-template-columns:1fr 1fr; }.container { margin:14px auto; padding:10px; }
     }
 </style>
 </head>
 <body>
 <div class="header">
-  <h1>👑 REI DA <span>NAVALHA</span></h1>
+  <h1>✂️ BARBEARIA <span>PRO</span></h1>
   <button class="hamburger" onclick="toggleMenu()">☰</button>
   <div class="nav" id="navMenu">
     <a href="/" class="{{'active' if active=='inicio' else ''}}">Início</a>
@@ -148,7 +148,6 @@ def index():
             pid=int(request.form.get("id")); servicos_avulso=[x for x in servicos_avulso if x["id"]!=pid]
         return redirect("/")
 
-    # CALCULOS NOVOS - GANHO HOJE / SEMANA
     hoje_str = datetime.now().strftime("%d/%m/%Y")
     total_hoje = sum(a['total'] for a in atendimentos_db if hoje_str in a['data'])
     inicio_semana = datetime.now() - timedelta(days=datetime.now().weekday())
@@ -235,7 +234,6 @@ def index():
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="inicio")
 
-# --- NOVA ROTA DESPESAS ---
 @app.route("/despesas", methods=["GET","POST"])
 def despesas_route():
     global despesas_db
@@ -247,15 +245,13 @@ def despesas_route():
             mid=request.form.get("id")
             despesas_db=[x for x in despesas_db if str(x["id"])!=str(mid)]
         return redirect("/despesas")
-
     total = sum(d["valor"] for d in despesas_db)
     rows=""
     for d in reversed(despesas_db):
         rows+=f"<tr style='color:#000;'><td style='padding:10px; border-bottom:1px solid #e2e8f0;'>{d['data']}</td><td><span class='tag'>{d['categoria']}</span> {d['nome']}</td><td style='font-weight:900; color:#c8102e;'>R$ {d['valor']:.2f}</td><td><form method='POST' style='display:inline;'><input type='hidden' name='acao' value='excluir'><input type='hidden' name='id' value='{d['id']}'><button class='mini-btn' style='background:#fee2e2;'>X</button></form></td></tr>"
-
     content=f"""
     <div class="card">
-      <h2>💸 Nova Despesa - Campo que você pediu</h2>
+      <h2>💸 Nova Despesa</h2>
       <form method="POST" style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:10px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
         <div><label>O que gastou?</label><input name="nome" placeholder="Ex: Aluguel, Lâmina, Luz" required></div>
@@ -271,8 +267,6 @@ def despesas_route():
     </div>
     """
     return render_template_string(HTML_BASE.replace("{{content}}", content), active="desp")
-
-#... (mantenha o resto do seu código de /produtos, /novo, /mensalistas, /clientes, /historico igual)...
 
 @app.route("/produtos", methods=["GET","POST"])
 def produtos_route():
@@ -518,28 +512,23 @@ def clientes():
                 servico_escolhido = request.form.get("servico_visita") or "Visita avulsa"
                 c["ultima_visita"]=hoje; c["visitas_mes"]+=1; c["historico"].append(f"{hoje} - {servico_escolhido}")
         return redirect("/clientes")
-
     edit_id=request.args.get("edit", type=int)
     options_servicos = "".join([f'<option value="{s["nome"]}">{s["nome"]} - R$ {s["valor"]:.0f}</option>' for s in servicos_avulso])
-
     lista=""
     for c in reversed(clientes_avulso_db):
         try:
             ultima_data = parse_data_br(c["ultima_visita"])
             dias_sumido = (datetime.now() - ultima_data).days
         except: dias_sumido = 0
-
         if dias_sumido >= 30:
             tag = f'<span class="tag" style="background:#991b1b;">SUMIDO {dias_sumido} DIAS</span>'
         elif c["visitas_mes"]>=2:
             tag = f'<span class="tag tag-green">{c["visitas_mes"]}x no mês</span>'
         else:
             tag = f'<span class="tag">{c["visitas_mes"]}x</span>'
-
         alerta = '<span class="tag tag-orange">🔥 Virar mensalista?</span>' if c["visitas_mes"]>=3 else ''
         if dias_sumido>=30:
             alerta+= f' <span class="tag" style="background:#fee2e2; color:#991b1b;">📞 LIGAR!</span>'
-
         hist="<br>".join(c["historico"][-5:])
         form_edit=f"""
         <form method="POST" style="background:#f1f5f9; padding:12px; border-radius:10px; margin-top:10px; display:grid; grid-template-columns:1fr 1fr 1fr 1fr 0.5fr; gap:6px;">
@@ -562,10 +551,9 @@ def clientes():
             <form method="POST" style="display:inline;" onsubmit="return confirm('Excluir?')"><input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{c['id']}"><button class="mini-btn" style="background:#fee2e2;">Excluir</button></form>
           </div>
         </div>"""
-
     content=f"""
     <div class="card">
-      <h2>👥 Controle Avulso - Quem veio mais de 1x</h2>
+      <h2>👥 Controle Avulso</h2>
       <form method="POST" style="display:grid; grid-template-columns:1.2fr 1fr 0.8fr 0.8fr 1.2fr 0.4fr 0.8fr; gap:8px; align-items:end;">
         <input type="hidden" name="acao" value="novo">
         <div><label>Nome</label><input name="nome" required></div>
